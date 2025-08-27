@@ -17,24 +17,40 @@ export function useTimeOfDay(): TimeOfDayInfo {
 }
 
 function getTimeBasedInfo(): TimeOfDayInfo {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) {
+  const now = new Date();
+  const totalMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Noctámbulo: 22:01 (1321) to 07:29 (449)
+  if (totalMinutes >= 1321 || totalMinutes <= 449) {
+    return {
+      timeOfDay: TimeOfDay.Noctambulo,
+      backgroundUrl: BACKGROUND_IMAGES.night,
+      overlayClass: 'bg-black/20',
+    };
+  }
+
+  // Mañana: 07:30 (450) to 12:00 (720)
+  if (totalMinutes >= 450 && totalMinutes <= 720) {
     return {
       timeOfDay: TimeOfDay.Morning,
       backgroundUrl: BACKGROUND_IMAGES.morning,
-      overlayClass: 'bg-black/40', // Overlay más oscuro para fondo brillante
+      overlayClass: 'bg-black/40',
     };
   }
-  if (hour >= 12 && hour < 18) {
+
+  // Tarde: 12:01 (721) to 18:00 (1080)
+  if (totalMinutes >= 721 && totalMinutes <= 1080) {
     return {
       timeOfDay: TimeOfDay.Afternoon,
       backgroundUrl: BACKGROUND_IMAGES.afternoon,
-      overlayClass: 'bg-black/40', // Overlay más oscuro para fondo brillante
+      overlayClass: 'bg-black/40',
     };
   }
+
+  // Noche: 18:01 (1081) to 22:00 (1320)
   return {
     timeOfDay: TimeOfDay.Night,
     backgroundUrl: BACKGROUND_IMAGES.night,
-    overlayClass: 'bg-black/20', // Overlay más claro para fondo oscuro
+    overlayClass: 'bg-black/20',
   };
 }

@@ -1,4 +1,48 @@
-import { Podcast } from "./types";
+import { Podcast, MusicTrack } from "./types";
+
+// INSTRUCCIÓN: Sube tus audios de saludo a Cloudinary y reemplaza estas URLs.
+// He creado listas para que puedas poner 10 saludos por cada momento del día.
+export const GREETING_AUDIOS = {
+  morning: [ // 10 saludos de 07:30 a 12:00 
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265258/10_jvsbhs.mp3', 
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265258/11_ddtxzh.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265259/12_kv7dc7.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265259/13_a8blfe.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265274/14_ke8hml.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265275/15_pbsmec.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265277/16_d8ranc.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265278/17_qf3zmo.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265279/18_uw1dpy.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265280/19_gpjhoz.mp3',
+  ],
+  afternoon: [ // 10 saludos de 12:01 a 18:00 
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265290/20_wn0weh.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265291/21_fwpqni.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265292/22_l5bkbz.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265294/23_ahmio9.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265294/24_sdjmui.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265295/25_piazi2.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265296/26_hpvyxo.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265298/27_guvt3f.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265299/28_mcuvlw.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265300/29_juasvn.mp3',
+  ],
+  night: [ // 10 saludos de 18:01 a 22:00 
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265336/30_rpschd.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265337/31_qybjne.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265339/33_j0xym3.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265340/34_cu8l1q.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265343/35_fmvioz.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265343/36_voxsro.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265345/37_rnefti.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265347/38_obcrwl.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265348/39_khytco.mp3',
+  ],
+  noctambulo: [ // 1 saludo de 22:01 a 07:29 
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265409/reflexiones_de_un_noc_mvrotz.mp3',
+  ],
+};
+
 
 // Instructions: Replace these placeholder URLs with your actual image URLs from Cloudinary.
 export const BACKGROUND_IMAGES = {
@@ -8,25 +52,503 @@ export const BACKGROUND_IMAGES = {
 };
 
 // A curated list of Cloudinary video URLs for the visual player.
+// These are separate from the background videos.
 export const VIDEO_URLS: string[] = [
   'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755907719/animaci%C3%B3n_APP_pvxjop.mp4',
-  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755853107/213406_small_b3pf71.mp4',
-  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755853108/211718_small_ntg6fv.mp4',
-  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755852356/4437-178898261_small_og2cb1.mp4',
   'https://res.cloudinary.com/demo/video/upload/elephants.mp4',
-  'https://res.cloudinary.com/demo/video/upload/boat.mp4',
 ];
 
-// A curated list of YouTube video IDs for background music (audio only).
-export const MUSIC_IDS: string[] = [
-  '5qap5aO4i9A', // Lofi hip hop radio
-  'DWcJFNfaw9c', // Coffee shop vibes
-  'aGFz4M-TPt8', // Ambient study music
-  'rUxyKA_-grg', // Relaxing sleep music
-  'MCiBnlfA_eA', // Synthwave radio
-  'fEV_2b2JCwY', // Jazz piano
-  'M-p-n01yB6s', // Calm meditation music
+// Placeholder for the main logo, used as a spinning record in the music player.
+// INSTRUCTION: Replace this with the final logo's Cloudinary URL.
+export const NEXO_DIGITAL_LOGO_URL = 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1755726078/logo_el_nexo_digital_kbxqvp.png';
+
+
+// INSTRUCCIONES: Reemplaza esta lista de ejemplo con tus 70 canciones de Cloudinary.
+// Asegúrate de que la 'url' sea la URL directa al archivo de audio.
+// Las 'tags' (etiquetas) numéricas se usan para la hora del día:
+// 1: Mañana (07:30 - 12:00)
+// 2: Tarde (12:01 - 18:00)
+// 3: Noche (18:01 - 22:00)
+// Puedes añadir más etiquetas como 'chill', 'upbeat', 'focus', 'energetic' para futuras funcionalidades.
+export const MUSIC_TRACKS: MusicTrack[] = [
+  {
+    id: 'm8',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154371/M%C3%BAsica_Cham%C3%A1nica_wjt2sc.mp3',
+    title: 'música chamanica',
+    description: 'Música chamánica: tambor, trance y selva que respira..',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm9',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154368/kpop_mhptzr.mp3',
+    title: 'Kpop',
+    description: 'K-Pop mhptzr: brillo eléctrico, coreo milimétrica y adrenalina juvenil.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm10',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154360/utomp3.com_-_Experience_David_Guettas_Epic_Performance_Of_The_Monolith_at_AlUla_k6sjqi.mp3',
+    title: 'David Guetta',
+    description: 'David Guetta – The Monolith: beats monumentales en un desierto de luces eternas.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm11',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154359/Whiskey_Blues_Best_of_Slow_BluesRock_1_nvnw0f.mp3',
+    title: 'whisky blues',
+    description: 'Whiskey Blues: guitarras lentas, humo denso y la noche que nunca cierra..',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm12',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154358/playlist_1_wpldia.mp3',
+    title: 'de todo',
+    description: 'playlist marciana',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm13',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154359/Whiskey_Blues_Best_of_Slow_BluesRock_1_nvnw0f.mp3',
+    title: 'whisky blues',
+    description: 'Whiskey Blues: guitarras lentas, humo denso y la noche que nunca cierra.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm14',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154332/DUNE_PART_TWO_SOUNDTRACK_CUT_Hans_Zimmer_xxf2ve.mp3',
+    title: 'Dune 2',
+    description: 'Dune, arena mágica, entre amores prohibidos.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm15',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154307/SnapSave.io_-_Insomnia_Monster_Mix_320_kbps_hk1mgp.mp3',
+    title: 'Insomnia',
+    description: 'Insomnia Monster: sombras eléctricas, mente despierta y un rugido en la oscuridad..',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm16',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154298/Dark_Clubbing_Exotic_c9mlrt.mp3',
+    title: 'Dark Exotic',
+    description: 'Dark Clubbing Exotic: luces que cortan la noche y ritmos que hipnotizan el cuerpo.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm17',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154290/Dark_Season_3_Soundtrack_zpz9xd.mp3',
+    title: 'Dark 3',
+    description: 'Cuando la sombra es el camino.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm18',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154286/Dark_Soundtrack_Season1_x13die.mp3',
+    title: 'Dark 1',
+    description: 'Todo está conectado.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm19',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154281/Dark_Soundtrack_Season_2_iix02x.mp3',
+    title: 'Dark',
+    description: 'Las sombras del futuro en el presente.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm20',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154279/Zack_Hemsey_The_Way_pb3q1t.mp3',
+    title: 'Zack_Hemsey_The_Way',
+    description: 'Zack Hemsey – The Way: intensidad épica, drama que late y pasos hacia lo inevitable.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm21',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154273/cold-little-heart_i4lzeh.mp3',
+    title: 'frío‑poco‑heart',
+    description: 'melancolía helada con un susurro de vulnerabilidad.',
+    tags: [2, 'lento'],
+  },
+  {
+    id: 'm22',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154270/Y2DL_Wednesday_Playing_Cello_-_Paint_It_Black__Epic_Version_citspz.mp3',
+    title: 'Miercoles Paint it black.',
+    description: 'Wednesday – Paint It Black (Epic Cello): oscuridad intensa, arco que llora y energía que golpea el alma.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm23',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154269/Who_Will_Save_Us_feat_Fleurie_Tommee_Profitt_qeirn4.mp3',
+    title: 'Who Will Save Us (feat. Fleurie) – Tommee Profitt',
+    description: 'Who Will Save Us (feat. Fleurie) – Tommee Profitt: voz etérea entre ruinas, esperanza frágil que lucha por brillar.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm24',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154264/Justin_Timberlake_Say_Something_First_Take_ft_Chris_Stapleton_x3zc1c.mp3',
+    title: 'Justin Timberlake & Chris Stapleton – Say Something',
+    description: 'Justin Timberlake & Chris Stapleton – Say Something emoción cruda, dueto que quiebra el silencio y susurra verdades.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm25',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154260/snow-raven-olox-feat-andreas-om-gennady-papizh-jivan-gasparyan-jivan-gasparyanjr-crying-earth_f8wrpk.mp3',
+    title: 'Cuervo de nieve',
+    description: 'Cuervo de nieve – Olox feat. Andreas Om, Gennady Papizh, Jivan Gasparyan & Jivan Gasparyan Jr: voces y instrumentos que lloran juntos, un lamento épico que atraviesa el alma.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm26',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154259/Thomas_Azier_Red_Eyes_official_video_uqakln.mp3',
+    title: 'Thomas Azier',
+    description: 'Thomas Azier – Red Eyes: atmósfera intensa, pulsos oscuros y mirada que no se aparta.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm27',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154256/The_beatles_let_it_be_hgvv95.mp3',
+    title: 'The Beatles',
+    description: 'The Beatles – Let It Be: calma melancólica que susurra consuelo en medio del caos.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm28',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154256/the_la_planta_x_luana_mil_preguntas_cover_rmjs5y.mp3',
+    title: 'The la planta',
+    description: 'The La Planta x Luana – Mil Preguntas: curiosidad y emociones que se entrelazan en cada nota.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm29',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154253/Roger_Waters_Comfortably_Numb_lc2qff.mp3',
+    title: 'Roger Waters',
+    description: 'Roger Waters – Comfortably Numb: guitarra que duele, voz que flota y un viaje entre anestesia y emoción.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm30',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154249/Runaway_kz7wdo.mp3',
+    title: 'Runaway',
+    description: 'Runaway: energía desenfrenada, adrenalina que corre y libertad que quema.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm31',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154249/Rone_-_Bye_Bye_Macadam_Official_Video_-_onlinevideoconverter.com_fdp7ok.mp3',
+    title: 'Rone',
+    description: 'Rone – Bye Bye Macadam: sintetizadores suaves que flotan, nostalgia urbana y pasos que se alejan.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm32',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154248/Snake_at_the_Window_feat_Lucy_Tops_rpejyd.mp3',
+    title: 'Snake at the Window feat. Lucy Tops',
+    description: 'Snake at the Window feat. Lucy Tops: misterio y tensión que se deslizan entre voces y ritmos sinuosos.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm33',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154244/RombaiFer_vazquez_cami_raj-cumbia_usddq3.mp3',
+    title: 'Rombai & Fer Vázquez feat. Cami Ra',
+    description: 'Rombai & Fer Vázquez feat. Cami Raj – Cumbia: ritmo contagioso, fiesta que no para y alegría que se mueve sola.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm34',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154241/Residente_Silvia_P%C3%A9rez_Cruz_Pen%C3%A9lope_Cruz_313_Official_Video_oh7xpb.mp3',
+    title: 'Residente, Silvia Pérez Cruz & Penélope Cruz',
+    description: 'Residente, Silvia Pérez Cruz & Penélope Cruz: intensidad y emoción entrelazadas, voces que cuentan historias profundas.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm35',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154238/ongleikr_Ulvetime_Hour_of_the_Wolf_fynem3.mp3',
+    title: 'Ongleikr – Ulvetime: Hour of the Wolf',
+    description: 'Ongleikr – Ulvetime: Hour of the Wolf: atmósfera oscura, tensión creciente y un lamento que recorre los huesos.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm36',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154225/Nirvana_Something_In_The_Way_THE_BATMAN_rtvhda.mp3',
+    title: 'Nirvana – Something In The Way (The Batman)',
+    description: 'Nirvana – Something In The Way (The Batman): melancolía cruda, susurros sombríos y un peso que se arrastra en la oscuridad.',
+    tags: [2, 'lento'],
+  },
+  {
+    id: 'm37',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154225/Monolink_Burning_Sun_Original_Mix_qjswfc.mp3',
+    title: 'Monolink – Burning Sun',
+    description: 'Monolink – Burning Sun (Original Mix): beats hipnóticos, calor que envuelve y un viaje electrónico al atardecer.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm38',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154223/metallica_nothing_else_matters_sgrm7u.mp3',
+    title: 'Metallica – Nothing Else Matters',
+    description: 'Metallica – Nothing Else Matters: guitarra emotiva, intimidad potente y un suspiro que atraviesa el alma.',
+    tags: [2, 'lento'],
+  },
+  {
+    id: 'm39',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154221/Meilan_Maurits_Song_for_a_Pure_Heart_Sound_Healing_nsxjdu.mp3',
+    title: 'Meilan Maurits – Song for a Pure Heart',
+    description: 'Meilan Maurits – Song for a Pure Heart: sonidos sanadores que acarician el espíritu y calman la mente.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm40',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154218/moby_Extreme_Ways_ft_Dougy_Mandagi_gectsl.mp3',
+    title: 'Moby – Extreme Ways feat',
+    description: 'Moby – Extreme Ways feat. Dougy Mandagi: ritmo urgente, tensión cinematográfica y emoción que no cede.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm41',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154218/moby_In_My_Heart_ft_Gregory_k3xdkl.mp3',
+    title: 'Moby – In My Heart feat',
+    description: 'Moby – In My Heart feat. Gregory: delicadeza melódica, sentimientos profundos que laten suavemente.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm42',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154213/matt-corby-monday-official-video_y7gfw5.mp3',
+    title: 'Matt Corby – Lunes',
+    description: 'Matt Corby – Lunes: voz cálida, melancolía suave y un susurro que acompaña la introspección.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm43',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154210/Laboratorium_Pie%C5%9Bni_Lecieli_cjocgi.mp3',
+    title: 'Laboratorium Pieśni – Lecieli',
+    description: 'Laboratorium Pieśni – Lecieli: capas vocales que flotan, tradición y emoción entrelazadas en un canto hipnótico.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm44',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154209/jose-gonzalez-stay-alive-official-video_yleijs.mp3',
+    title: 'José González – Manténgase Vivo',
+    description: 'José González – Manténgase Vivo: guitarra delicada y voz serena que sostienen esperanza en silencio.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm45',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154205/KASST_VTOPIA_nyplyz.mp3',
+    title: 'KASST – VTOPIA',
+    description: 'KASST – VTOPIA: atmósfera futurista, beats profundos y un viaje sonoro que desconcierta y fascina.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm46',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154201/K%C3%A4ppee_lmgjbk.mp3',
+    title: 'Käppee',
+    description: 'Käppee: texturas electrónicas suaves y un pulso hipnótico que envuelve.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm48',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154200/Jorge_Drexler_Tinta_y_Tiempo_bj8qqn.mp3',
+    title: 'Jorge Drexler – Tinta y Tiempo',
+    description: 'Jorge Drexler – Tinta y Tiempo: poesía suave sobre melodía tranquila, reflexionando sobre recuerdos y momentos.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm49',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154196/Jorge_Drexler_La_trama_y_el_desenlace_v6llin.mp3',
+    title: 'Jorge Drexler – La trama y el desenlace',
+    description: 'Jorge Drexler – La trama y el desenlace: historias que se entrelazan en melodías delicadas y letras que invitan a pensar.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm50',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154194/ira_ring_ring_p4vzzb.mp3',
+    title: 'Ira – Ring Ring',
+    description: 'Ira – Ring Ring: energía directa, ritmo contagioso y actitud que no se esconde.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm51',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154192/gustavo-santaolalla-babel-otnicka-remix_aknfxu.mp3',
+    title: 'Gustavo Santaolalla – Babel',
+    description: 'Gustavo Santaolalla – Babel (Otnicka Remix): atmósfera etérea, cuerdas profundas y electrónica que eleva el alma.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm52',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154191/HAVASI_Prelude_Age_of_Heroes_Official_Concert_Video_syx4b6.mp3',
+    title: 'HAVASI – Prelude: Age of Heroes',
+    description: 'HAVASI – Prelude: Age of Heroes: piano épico que despierta grandeza y emoción heroica.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm53',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154191/Igorrr_Tout_Petit_Moineau_zznoa0.mp3',
+    title: 'Igorrr – Tout Petit Moineau',
+    description: 'Igorrr – Tout Petit Moineau: caos controlado, mezcla de géneros extremos y energía impredecible.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm54',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154190/Hania_Rani_F_Major_Official_Video_Gondwana_Records_womftd.mp3',
+    title: 'Hania Rani – F Major',
+    description: 'Hania Rani – F Major: piano delicado y atmósfera introspectiva que envuelve suavemente.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm55',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154188/If_I_had_a_heart_Tagelharpa_Cello_cover_daw1qf.mp3',
+    title: 'If I Had a Heart – Tagelharpa & Cellor',
+    description: 'If I Had a Heart – Tagelharpa & Cello: oscuro y profundo, lamento que resuena entre cuerdas y voces ancestrales.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm56',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154185/Harder_Better_Faster_Stronger_Daft_Punk_Pomplamoose_ht3llb.mp3',
+    title: 'Harder, Better, Faster, Stronger – Daft Punk',
+    description: 'Harder, Better, Faster, Stronger – Daft Punk / Pomplamoose: ritmos mecánicos y energía juguetona que transforma cada pulso en movimiento.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm57',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154183/Goodbye_snq0fm.mp3',
+    title: 'Goodbye',
+    description: 'Goodbye: melancolía suave, adiós sentido y emociones que se quedan flotando.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm58',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154181/forest-with-small-river-birds-and-nature-field-recording-6735_rnbqqa.mp3',
+    title: 'Bosque con pájaros de río',
+    description: 'Bosque con pájaros de río – registro de campo: sonidos naturales que envuelven, agua y aves en un susurro constante de la naturaleza.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm59',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154181/grabby-bow-sample-33124_krrjin.mp3',
+    title: 'Grabby Bow – Sample',
+    description: 'Grabby Bow – Sample: texturas experimentales, ritmo juguetón y exploración sonora que despierta curiosidad.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm60',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154180/David_Guetta_Burj_Al_Arab_Live_Concert_UnitedatHome_opoes3.mp3',
+    title: 'David Guetta – Burj Al Arab Live Concert',
+    description: 'David Guetta – Burj Al Arab Live Concert: energía arrolladora, luces deslumbrantes y beats que llenan el aire de fiesta.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm61',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154179/Giol%C3%AC_Assia_YOUNG_FOREVER_qxm6pm.mp3',
+    title: 'Giolì & Assia – Young Forever',
+    description: 'Giolì & Assia – Young Forever: frescura vibrante, energía juvenil y melodías que invitan a soñar.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm62',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154179/Florence_The_Machine_Youve_Got_The_Love_Giol%C3%AC_Assia_Remix_qsfvlm.mp3',
+    title: 'You’ve Got The Love (Giolì & Assia)',
+    description: 'Florence + The Machine – You’ve Got The Love (Giolì & Assia): voces poderosas, emoción que eleva y ritmo que envuelve el corazón.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm63',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154178/Fleurie_-_Breathe_Lyric_Video_xq7d1a.mp3',
+    title: 'Fleurie – Breathe',
+    description: 'Fleurie – Breathe: delicadeza etérea, susurros que calman y un respiro entre la intensidad emocional.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm64',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154171/Faithless_-_We_Come_1_ornl1u.mp3',
+    title: 'Faithless – We Come 1',
+    description: 'Faithless – We Come: ritmos potentes, energía contagiosa y un llamado a moverse sin descanso.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm65',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154170/Eurythmics_Sweet_Dreams_Instrumental_iyd94f.mp3',
+    title: 'Eurythmics – Sweet Dreams (Instrumental)',
+    description: 'Eurythmics – Sweet Dreams (Instrumental): sintetizadores icónicos y atmósfera hipnótica que envuelve cada nota.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm66',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154170/Fade_Under_A_Tergo_Lupi_uxtxyi.mp3',
+    title: 'Fade – Under A Tergo Lupi',
+    description: 'Fade – Under A Tergo Lupi: ambiente oscuro y envolvente, con tensión y texturas que hipnotizan.',
+    tags: [3, 'movido'],
+  },
+  {
+    id: 'm67',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154162/Dua_Lipa_covers_Arctic_Monkeys_Do_I_Wanna_Know_in_the_Live_Lounge_xiok8d.mp3',
+    title: 'Dua Lipa – Do I Wanna Know',
+    description: 'Dua Lipa – Do I Wanna Know (Live Lounge cover): voz potente y sensual que reinterpreta con estilo íntimo y moderno el clásico de Arctic Monkeys.',
+    tags: [2, 'lento'],
+  },
+  {
+    id: 'm68',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154156/Desperado_zj7tsh.mp3',
+    title: 'Rihanna - Desperado',
+    description: 'Desperado: melancolía intensa, guitarra que suspira y sensación de soledad épica.',
+    tags: [1, 'lento'],
+  },
+  {
+    id: 'm69',
+    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154152/David_Guetta_ft_Sia_Titanium_David_Guetta_MORTEN_Future_Rave_Remix_Live_Edit_dkqqid.mp3',
+    title: 'David Guetta ft. Sia – Titanium',
+    description: 'David Guetta ft. Sia – Titanium (Future Rave Remix): energía explosiva, voces poderosas y beats que no dejan de empujar.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm70',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154142/All_of_Me_Stellenbosch_University_Choir_John_Legend_Arr_Andre_van_der_Merwe_gqp6ww.mp3',
+    title: 'All of Me – Stellenbosch University Choir',
+    description: 'All of Me – Stellenbosch University Choir (Arr. Andre van der Merwe): armonías vocales envolventes que transforman el clásico de John Legend en un coro emotivo y poderoso.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm71',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154134/agnes-obel-fuel-to-fire-official-video_pk0z7x.mp3',
+    title: 'Agnes Obel – Combustible para fuego',
+    description: 'Agnes Obel – Combustible para fuego: piano delicado y voz etérea que encienden emociones profundas y reflexivas.',
+    tags: [2, 'lento'],
+  },
+  {
+    id: 'm72',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154130/Agnes_Obel_DARK_Slowed_and_Reverb_Brings_back_a_lot_of_memories_z4dxqi.mp3',
+    title: 'Agnes Obel – DARK (Slowed & Reverb)',
+    description: 'Agnes Obel – DARK (Slowed & Reverb): atmósfera introspectiva, nostalgia densa y melodías que envuelven como un susurro del pasado.',
+    tags: [3, 'lento'],
+  },
+  {
+    id: 'm73',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154128/Beyond_Us_jzx3lq.mp3',
+    title: 'Beyond Us',
+    description: 'Beyond Us: sonido expansivo y envolvente, con energía que invita a soñar más allá del presente.',
+    tags: [2, 'lento'],
+  },
+  {
+    id: 'm74',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154126/A_Tergo_Lupi_Red_Sun_wxhprz.mp3',
+    title: 'A Tergo Lupi – Red Sun',
+    description: 'A Tergo Lupi – Red Sun: atmósfera intensa y misteriosa, con texturas sonoras que arden lentamente.',
+    tags: [2, 'movido'],
+  },
+  {
+    id: 'm75',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154125/A_TERGO_LUPI_Cozu_OFFICIAL_VIDEO_ibk3w2.mp3',
+    title: 'A Tergo Lupi – Cozu',
+    description: 'A Tergo Lupi – Cozu: misterio y tensión, con texturas oscuras que envuelven y capturan la atención.',
+    tags: [1, 'movido'],
+  },
+  {
+    id: 'm76',
+    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154125/2CELLOS_Smells_Like_Teen_Spirit_Live_at_Sydney_Opera_House_zleidb.mp3',
+    title: '2CELLOS – Smells Like Teen Spirit',
+    description: '2CELLOS – Smells Like Teen Spirit (Live at Sydney Opera House): energía explosiva, cuerdas que rugen y reinterpretación épica del clásico de Nirvana.',
+    tags: [2, 'movido'],
+  },
 ];
+
 
 // A curated list of podcasts. The first one is considered the "latest".
 export const PODCASTS: Podcast[] = [
@@ -114,4 +636,27 @@ export const PODCASTS: Podcast[] = [
     videoId: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755750367/Celebramos%20la%20tristeza%20catarsis.mp3',
     coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1755905729/festejamos_la_tristeza_dl9rx7.png',
   }
+];
+
+// INSTRUCCIÓN: Añade aquí las URLs de tus "muletillas" o "audio stingers".
+// Estos audios cortos sonarán aleatoriamente sobre la música.
+export const AUDIO_STINGERS: string[] = [
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197284/si_te_gusto_s3uzjb.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197282/sepia_r2xzgo.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197277/par%C3%B3_y_pens%C3%B3_jssbs2.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197276/nexo_inteli_arti_grace_uurxht.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197274/musica_verguenza_s3chpg.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197272/musica_para_descubrir_gilldq.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197271/mantra2_xxutbo.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197269/manera_de_actuar_drjhds.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197267/lo_escuchaste_i95ajq.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197266/hoy_es_el_dia_2_czsrns.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197263/exclusivo_del_nexo_nicolle_gxsl68.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197262/entropia_edward_sbpcig.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197260/el_tema_de_hoy_estereo_a35smw.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197259/el_nexo_digital_nicolle_x6fvz6.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197258/eclecticos_nicole_lbmh1d.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197256/dominar_las_ma%C3%B1anas_bhovat.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197252/dame_mas_musica_vfqgr3.mp3',
+  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756196969/atrapados_en_la_distraccion_obkcvy.mp3',
 ];

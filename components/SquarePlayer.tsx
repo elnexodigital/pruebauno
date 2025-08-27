@@ -11,9 +11,12 @@ interface SquarePlayerProps {
 
 const SquarePlayer: React.FC<SquarePlayerProps> = ({ podcast, isPlaying, onTogglePlay }) => {
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-2">
+       <div className="w-[120px] md:w-[160px] text-center mb-1">
+        <h2 className="font-display text-2xl md:text-3xl text-white tracking-[0.05em] md:tracking-[0.075em] opacity-70">NEW PODCAST</h2>
+      </div>
       <div
-        className="relative w-[160px] h-[160px] md:w-[200px] md:h-[200px] rounded-2xl shadow-2xl overflow-hidden group bg-gray-900/50"
+        className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] rounded-2xl shadow-2xl overflow-hidden group bg-gray-900/50"
       >
         <img 
           src={podcast.coverUrl}
@@ -30,9 +33,9 @@ const SquarePlayer: React.FC<SquarePlayerProps> = ({ podcast, isPlaying, onToggl
           </button>
         </div>
       </div>
-      <div className="text-center">
-        <h2 className="text-lg md:text-xl font-bold text-white truncate max-w-[160px] md:max-w-[200px]">{podcast.title}</h2>
-        <p className="text-gray-300">{podcast.artist || 'Último Podcast'}</p>
+      <div className="text-center w-[120px] md:w-[160px] h-12 flex flex-col justify-center items-center mt-1">
+        <p className="text-sm font-bold text-white truncate w-full">{podcast.title}</p>
+        {podcast.artist && <p className="text-xs text-gray-300 truncate w-full">{podcast.artist}</p>}
       </div>
     </div>
   );

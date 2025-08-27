@@ -30,8 +30,8 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, backgroundUrl, overla
     >
       <BackgroundVideo videoUrl={backgroundUrl} overlayClass={overlayClass} />
       <div className="relative w-full max-w-md text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg z-10">
-        <h1 className="font-brittany text-4xl md:text-5xl font-normal text-white mb-2 tracking-wide">El Nexo Digital</h1>
-        <p className="text-lg text-gray-200 mb-8">¡Hola! Este registro es por única vez y nos ayudará a personalizar tu experiencia.</p>
+        <h1 className="font-brittany text-3xl md:text-4xl font-normal text-white mb-2 tracking-wide">El Nexo Digital</h1>
+        <p className="text-base text-gray-200 mb-8">¡Hola! Este registro es por única vez y nos ayudará a personalizar tu experiencia.</p>
         
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div>
