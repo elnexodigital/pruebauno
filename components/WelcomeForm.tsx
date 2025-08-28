@@ -10,18 +10,16 @@ interface WelcomeFormProps {
 
 const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, backgroundUrl, overlayClass }) => {
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      setError('El nombre y el celular son obligatorios.');
+    if (!name.trim()) {
+      setError('Por favor, dime tu nombre.');
       return;
     }
     setError('');
-    onSave({ name, phone, email });
+    onSave({ name });
   };
 
   return (
@@ -31,7 +29,7 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, backgroundUrl, overla
       <BackgroundVideo videoUrl={backgroundUrl} overlayClass={overlayClass} />
       <div className="relative w-full max-w-md text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg z-10">
         <h1 className="font-brittany text-3xl md:text-4xl font-normal text-white mb-2 tracking-wide">El Nexo Digital</h1>
-        <p className="text-base text-gray-200 mb-8">¡Hola! Este registro es por única vez y nos ayudará a personalizar tu experiencia.</p>
+        <p className="text-base text-gray-200 mb-8">¡Hola! Por única vez, decime tu nombre así sé a quién dirigirme.</p>
         
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div>
@@ -46,30 +44,7 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, backgroundUrl, overla
               required
             />
           </div>
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-200">Celular</label>
-            <input
-              type="tel"
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-1 block w-full bg-white/10 border-white/20 text-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              placeholder="Tu número de celular"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-200">Email (Opcional)</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full bg-white/10 border-white/20 text-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              placeholder="tu@email.com"
-            />
-          </div>
-
+          
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
           <button

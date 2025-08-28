@@ -7,8 +7,6 @@ export enum TimeOfDay {
 
 export interface UserInfo {
   name: string;
-  phone: string;
-  email?: string;
 }
 
 export interface TimeOfDayInfo {
@@ -41,4 +39,13 @@ export interface MediaItem {
   title?: string;
   artist?: string;
   description?: string;
+}
+
+export interface PopupContent {
+  time: string; // "HH:MM" format
+  title: string;
+  text: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  audioUrl?: string;
 }

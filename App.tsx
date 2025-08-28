@@ -1,49 +1,22 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
-import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS } from './constants';
+import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE } from './constants';
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
-import OwnerControls from './components/OwnerControls';
 import WelcomeForm from './components/WelcomeForm';
 import ShuffleIcon from './components/icons/ShuffleIcon';
 import CircularPlayer from './components/CircularPlayer';
 import SquarePlayer from './components/SquarePlayer';
 import BackgroundVideo from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
-import { TimeOfDay, UserInfo, MediaItem, Podcast, MusicTrack } from './types';
+import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent } from './types';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-
-/**
- * Determines the current music time tag based on specific time ranges.
- * @returns {1 | 2 | 3 | 4} 1 for morning, 2 for afternoon, 3 for night, or 4 for noctambulo.
- */
-const getCurrentMusicTag = (): 1 | 2 | 3 | 4 => {
-  const now = new Date();
-  const totalMinutes = now.getHours() * 60 + now.getMinutes();
-
-  // Noctámbulo (4): 22:01 to 07:29
-  if (totalMinutes >= 1321 || totalMinutes <= 449) {
-    return 4;
-  }
-  // Morning (1): 07:30 to 12:00
-  if (totalMinutes >= 450 && totalMinutes <= 720) {
-    return 1;
-  }
-  // Afternoon (2): 12:01 to 18:00
-  if (totalMinutes >= 721 && totalMinutes <= 1080) {
-    return 2;
-  }
-  // Night (3): 18:01 to 22:00
-  return 3;
-};
-
 
 export default function App(): React.ReactNode {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isStarted, setIsStarted] = useState<boolean>(false);
-  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   
   const { timeOfDay, backgroundUrl, overlayClass } = useTimeOfDay();
 
@@ -52,30 +25,42 @@ export default function App(): React.ReactNode {
   const [latestPodcast] = useState<Podcast>(PODCASTS[0]);
   const [activePlayer, setActivePlayer] = useState<'main' | 'latest' | null>(null);
   const [currentAudioId, setCurrentAudioId] = useState<string>('');
+  const [lastPodcastPlayTime, setLastPodcastPlayTime] = useState<number | null>(null);
+  const [mainPlayerVolume, setMainPlayerVolume] = useState<number>(1.0);
+  
+  const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
+  const [shownPopups, setShownPopups] = useState<string[]>([]);
+  const [playerToResume, setPlayerToResume] = useState<'main' | 'latest' | null>(null);
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
   const isLatestPlayerActive = activePlayer === 'latest';
   
   const stingerTimeoutRef = useRef<number | null>(null);
-
-  const pickRandomMedia = useCallback((options: { forceMusic?: boolean } = {}): MediaItem => {
+  
+  const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
     const { forceMusic = false } = options;
-    const currentTag = getCurrentMusicTag();
-    let suitableTracks: MusicTrack[] = MUSIC_TRACKS.filter(track => track.tags.includes(currentTag));
+    const now = Date.now();
+    const sixtyMinutes = 60 * 60 * 1000;
     
-    // If no tracks for the specific time are found, consider all music tracks.
-    if (suitableTracks.length === 0) {
-      suitableTracks = MUSIC_TRACKS;
-    }
+    const isTimeForPodcast = !lastPodcastPlayTime || (now - lastPodcastPlayTime > sixtyMinutes);
+    const shouldPlayPodcast = !forceMusic && isTimeForPodcast && Math.random() > 0.5;
+    
+    let newItem: MediaItem;
 
-    // Determine if a podcast should be played. Never on forceMusic.
-    const canPlayMusic = suitableTracks.length > 0;
-    const shouldPlayPodcast = !forceMusic && Math.random() > 0.5;
-
-    if (canPlayMusic && !shouldPlayPodcast) {
-        const track = getRandomItem(suitableTracks);
-        return {
+    if (shouldPlayPodcast) {
+        const podcast = getRandomItem(PODCASTS);
+        newItem = {
+            type: 'podcast',
+            videoId: podcast.videoId,
+            coverUrl: podcast.coverUrl,
+            title: podcast.title,
+            artist: podcast.artist,
+        };
+        setLastPodcastPlayTime(now);
+    } else {
+        const track = getRandomItem(MUSIC_TRACKS);
+        newItem = {
             type: 'music',
             videoId: track.url,
             coverUrl: 'logo',
@@ -84,24 +69,11 @@ export default function App(): React.ReactNode {
         };
     }
 
-    // Fallback to podcast if music isn't available or by random chance.
-    const podcast = getRandomItem(PODCASTS);
-    return {
-        type: 'podcast',
-        videoId: podcast.videoId,
-        coverUrl: podcast.coverUrl,
-        title: podcast.title,
-        artist: podcast.artist,
-    };
-  }, []);
-  
-  const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
-    const randomItem = pickRandomMedia(options);
-    setMainPlayerItem(randomItem);
+    setMainPlayerItem(newItem);
     setActivePlayer('main');
-    setCurrentAudioId(randomItem.videoId);
+    setCurrentAudioId(newItem.videoId);
     setCurrentVideoUrl(getRandomItem(VIDEO_URLS));
-  }, [pickRandomMedia]);
+  }, [lastPodcastPlayTime]);
 
   useEffect(() => {
     try {
@@ -121,54 +93,135 @@ export default function App(): React.ReactNode {
     }
   }, [isStarted, mainPlayerItem, shuffleMedia]);
 
-  // Effect for handling audio stingers
+  // Effect for handling audio stingers with auto-ducking
   useEffect(() => {
-    const clearStingerTimeout = () => {
+    let stingerAudio: HTMLAudioElement | null = null;
+
+    const scheduleTimeout = () => {
       if (stingerTimeoutRef.current) {
         clearTimeout(stingerTimeoutRef.current);
-        stingerTimeoutRef.current = null;
       }
-    };
-
-    const scheduleNextStinger = () => {
-      clearStingerTimeout();
-
-      // Conditions to play a stinger: music must be playing in the main player
-      // and there must be stingers available.
-      if (!isMainPlayerActive || mainPlayerItem?.type !== 'music' || AUDIO_STINGERS.length === 0) {
-        return;
-      }
-
       // Random time between 1 minute (60,000ms) and 3 minutes (180,000ms)
       const minDelay = 1 * 60 * 1000;
       const maxDelay = 3 * 60 * 1000;
       const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
 
-      stingerTimeoutRef.current = window.setTimeout(() => {
-        const randomStingerUrl = getRandomItem(AUDIO_STINGERS);
-        try {
-          const stingerAudio = new Audio(randomStingerUrl);
-          stingerAudio.play().catch(error => {
-            console.error("Audio stinger playback failed:", error);
-          });
-        } catch (error) {
-          console.error("Error creating or playing audio stinger:", error);
-        }
-        
-        // Once a stinger plays, schedule the next one.
-        scheduleNextStinger();
-      }, randomDelay);
+      stingerTimeoutRef.current = window.setTimeout(playStingerAndScheduleNext, randomDelay);
     };
 
-    // Schedule the first stinger or reschedule if dependencies change.
-    scheduleNextStinger();
+    const playStingerAndScheduleNext = () => {
+      const randomStingerUrl = getRandomItem(AUDIO_STINGERS);
+      try {
+        stingerAudio = new Audio(randomStingerUrl);
 
-    // Cleanup function to clear the timeout when the component unmounts
-    // or when the dependencies change, preventing memory leaks.
-    return clearStingerTimeout;
+        const onStingerEnd = () => {
+          setMainPlayerVolume(1.0); // Restore main audio volume
+          if (stingerAudio) {
+            stingerAudio.removeEventListener('ended', onStingerEnd);
+            stingerAudio.removeEventListener('error', onStingerError);
+          }
+          scheduleTimeout();
+        };
+
+        const onStingerError = (e: ErrorEvent | string) => {
+          console.error("Audio stinger playback error:", e);
+          setMainPlayerVolume(1.0); // Restore volume on error too
+          if (stingerAudio) {
+            stingerAudio.removeEventListener('ended', onStingerEnd);
+            stingerAudio.removeEventListener('error', onStingerError);
+          }
+          scheduleTimeout();
+        };
+
+        stingerAudio.addEventListener('ended', onStingerEnd);
+        stingerAudio.addEventListener('error', onStingerError);
+        
+        setMainPlayerVolume(0.2); // Duck main audio
+
+        stingerAudio.play().catch(error => {
+          console.error("Audio stinger playback failed:", error);
+          onStingerError(error.toString());
+        });
+
+      } catch (error) {
+        console.error("Error creating audio stinger:", error);
+        scheduleTimeout(); // Try to schedule next one anyway
+      }
+    };
     
-  }, [isMainPlayerActive, mainPlayerItem]); // Re-run this effect if the player state or item changes.
+    // Conditions to run the stinger logic
+    if (!isMainPlayerActive || mainPlayerItem?.type !== 'music' || AUDIO_STINGERS.length === 0) {
+      if (stingerTimeoutRef.current) clearTimeout(stingerTimeoutRef.current);
+      return;
+    }
 
+    scheduleTimeout();
+
+    // Cleanup function
+    return () => {
+      if (stingerTimeoutRef.current) {
+        clearTimeout(stingerTimeoutRef.current);
+      }
+      // Stop any stinger that might be playing
+      if (stingerAudio) {
+        stingerAudio.pause();
+        stingerAudio.src = '';
+      }
+      // Always restore volume on cleanup
+      setMainPlayerVolume(1.0);
+    };
+    
+  }, [isMainPlayerActive, mainPlayerItem]);
+
+  // Effect for scheduled popups
+  useEffect(() => {
+    if (!isStarted) return;
+
+    const checkTime = () => {
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      const scheduledPopup = POPUP_SCHEDULE.find(p => p.time === currentTime);
+
+      if (scheduledPopup && !shownPopups.includes(scheduledPopup.time)) {
+        handleShowPopup(scheduledPopup);
+        setShownPopups(prev => [...prev, scheduledPopup.time]);
+      }
+    };
+
+    const intervalId = setInterval(checkTime, 60000); // Check every minute
+
+    // Reset shown popups at midnight for subsequent days
+    const now = new Date();
+    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0).getTime() - now.getTime();
+    const midnightTimer = setTimeout(() => {
+        setShownPopups([]);
+    }, msUntilMidnight);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(midnightTimer);
+    };
+  }, [isStarted, shownPopups]);
+
+  const handleShowPopup = (content: PopupContent) => {
+    // Pause main audio if popup has its own sound (from audio OR video)
+    if (content.audioUrl || content.videoUrl) {
+      if (activePlayer) {
+        setPlayerToResume(activePlayer);
+        setActivePlayer(null); // Pause main audio
+      }
+    }
+    setActivePopup(content);
+  };
+
+  const handleClosePopup = () => {
+    if (playerToResume) {
+      setActivePlayer(playerToResume);
+    }
+    setActivePopup(null);
+    setPlayerToResume(null);
+  };
 
   const handleUserSaved = (user: UserInfo) => {
     localStorage.setItem('userInfo', JSON.stringify(user));
@@ -218,6 +271,17 @@ export default function App(): React.ReactNode {
     }
   }, [timeOfDay]);
 
+  const showInfoText = useMemo(() => {
+    switch (timeOfDay) {
+      case TimeOfDay.Morning: return '"Ojo Crítico" conduce Graciela Aquelarre';
+      case TimeOfDay.Afternoon: return '"desintoxicación sonora" conduce Sergio Será';
+      case TimeOfDay.Night:
+      case TimeOfDay.Noctambulo:
+        return '"Reflexiones de un noctámbulo" conduce Gabriel Callum';
+      default: return '';
+    }
+  }, [timeOfDay]);
+
   const handleMainPlayerToggle = () => {
     if (isMainPlayerActive) {
       setActivePlayer(null);
@@ -245,6 +309,18 @@ export default function App(): React.ReactNode {
     }
   }, [mainPlayerItem, shuffleMedia]);
 
+  const handleVideoEnded = useCallback(() => {
+    if (VIDEO_URLS.length <= 1) return;
+
+    let newVideoUrl;
+    do {
+      newVideoUrl = getRandomItem(VIDEO_URLS);
+    } while (newVideoUrl === currentVideoUrl);
+    
+    setCurrentVideoUrl(newVideoUrl);
+  }, [currentVideoUrl]);
+
+  const audioPlayerVolume = isMainPlayerActive && mainPlayerItem?.type === 'music' ? mainPlayerVolume : 1.0;
 
   if (!userInfo) {
     return <WelcomeForm onSave={handleUserSaved} backgroundUrl={backgroundUrl} overlayClass={overlayClass} />;
@@ -276,8 +352,8 @@ export default function App(): React.ReactNode {
     >
       <BackgroundVideo videoUrl={backgroundUrl} overlayClass={overlayClass} />
 
-      <div className="absolute top-4 left-4 text-white bg-black bg-opacity-20 px-3 py-1 rounded-full text-sm z-20">
-        {timeOfDay}
+      <div className="absolute top-4 right-4 text-white bg-black bg-opacity-30 px-4 py-2 rounded-full text-base font-bold z-20 backdrop-blur-sm">
+        {showInfoText}
       </div>
 
       <div className="absolute left-[-2rem] md:left-[-3rem] top-0 bottom-0 flex items-center z-10 pointer-events-none">
@@ -300,12 +376,16 @@ export default function App(): React.ReactNode {
           onTogglePlay={handleLatestPlayerToggle}
         />
         <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black">
-          <VideoPlayer videoUrl={currentVideoUrl} />
+          <VideoPlayer videoUrl={currentVideoUrl} onEnded={handleVideoEnded} />
         </div>
       </div>
 
       {isPlaying && currentAudioId && (
-        <AudioPlayer videoId={currentAudioId} onEnded={handleAudioEnded} />
+        <AudioPlayer 
+          videoId={currentAudioId} 
+          onEnded={handleAudioEnded} 
+          volume={audioPlayerVolume}
+        />
       )}
       
        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-3xl text-center px-4 z-10 pointer-events-none">
@@ -313,13 +393,12 @@ export default function App(): React.ReactNode {
           <TypewriterText
             key={mainPlayerItem.videoId} 
             text={mainPlayerItem.description}
-            className="font-typewriter text-lg md:text-xl text-white/90 bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2 inline-block animate-tremble"
+            className="font-typewriter text-lg md:text-xl text-white/90 bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2 inline-block animate-neon-glitch"
           />
         )}
       </div>
 
       <div className="absolute bottom-4 right-4 z-20 flex items-center space-x-4">
-         <OwnerControls onShowPopup={() => setIsPopupOpen(true)} />
          <button
             onClick={() => shuffleMedia()}
             aria-label="Mezclar medios"
@@ -329,19 +408,7 @@ export default function App(): React.ReactNode {
           </button>
       </div>
 
-      <PopupModal isOpen={isPopupOpen} onClose={() => setIsPopupOpen(false)}>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Anuncio Especial</h2>
-        <p className="text-gray-600 mb-6">
-          Esta es una ventana emergente de ejemplo. El propietario de la aplicación puede mostrarla en cualquier momento para mensajes o promociones importantes.
-        </p>
-        <img src="https://picsum.photos/400/200" alt="Imagen aleatoria" className="rounded-lg mb-6"/>
-        <button
-          onClick={() => setIsPopupOpen(false)}
-          className="w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-        >
-          Cerrar
-        </button>
-      </PopupModal>
+      <PopupModal content={activePopup} onClose={handleClosePopup} />
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import { Podcast, MusicTrack } from "./types";
+import { Podcast, MusicTrack, PopupContent } from "./types";
 
 // INSTRUCCIÓN: Sube tus audios de saludo a Cloudinary y reemplaza estas URLs.
 // He creado listas para que puedas poner 10 saludos por cada momento del día.
@@ -56,7 +56,32 @@ export const BACKGROUND_IMAGES = {
 export const VIDEO_URLS: string[] = [
   'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755907719/animaci%C3%B3n_APP_pvxjop.mp4',
   'https://res.cloudinary.com/demo/video/upload/elephants.mp4',
-];
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345297/14_okcuk0.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345296/13_debkpb.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345293/11_gud5kv.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345294/12_ringmi.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345294/9_ulzdcy.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345293/10_io3g8k.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345059/8_vng8sz.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345005/4_hczosi.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345005/6_jdroij.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345004/5_ivvibp.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345004/7_aw3cxt.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345003/3_thswfg.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345002/2_gthspn.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345001/1_ndgmbp.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344401/spot_10_segundos_completo_gtdtqu.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344390/spot10_segundos_completo_zsk1g7.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344378/spot_10_segundos_completo_hhoeeb.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344292/spot_10_segundos_completo_bkagma.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344282/spot10segundos_completo_rku0iy.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344274/spot_10_segundos_completo_fzdqlg.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344274/spot_10_segundos_completo_fzdqlg.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344264/spot_10_segundos_completo_kmryb2.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344252/spot_10_segundos_yirf7x.mp4',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755907719/animaci%C3%B3n_APP_pvxjop.mp4',
+].filter((url, index, self) => self.indexOf(url) === index); // Remove duplicates
+
 
 // Placeholder for the main logo, used as a spinning record in the music player.
 // INSTRUCTION: Replace this with the final logo's Cloudinary URL.
@@ -397,7 +422,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
     id: 'm55',
     url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154188/If_I_had_a_heart_Tagelharpa_Cello_cover_daw1qf.mp3',
     title: 'If I Had a Heart – Tagelharpa & Cellor',
-    description: 'If I Had a Heart – Tagelharpa & Cello: oscuro y profundo, lamento que resuena entre cuerdas y voces ancestrales.',
+    description: 'If I Had a Heart – Tagelharpa & Cello: oscuro y profundo, lamento que resuena entre cuerdas e voces ancestrales.',
     tags: [2, 'movido'],
   },
   {
@@ -659,4 +684,33 @@ export const AUDIO_STINGERS: string[] = [
   'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197256/dominar_las_ma%C3%B1anas_bhovat.mp3',
   'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197252/dame_mas_musica_vfqgr3.mp3',
   'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756196969/atrapados_en_la_distraccion_obkcvy.mp3',
+];
+
+// INSTRUCCIÓN: Define aquí el horario y contenido de los popups automáticos.
+// 'time': Hora en formato "HH:MM" para que aparezca.
+// 'title': Título del popup.
+// 'text': Cuerpo del mensaje.
+// Puedes usar 'imageUrl', 'videoUrl', o 'audioUrl' (o una combinación).
+// Si usas 'audioUrl' o 'videoUrl', la música de fondo se pausará.
+export const POPUP_SCHEDULE: PopupContent[] = [
+  {
+    time: "10:00", // Hora de la mañana
+    title: "Noticias del Día",
+    text: "Un breve resumen de las noticias más importantes para empezar tu mañana informado. ¡No te lo pierdas!",
+    imageUrl: "https://picsum.photos/seed/morningnews/1280/720",
+  },
+  {
+    time: "16:30", // Hora de la tarde
+    title: "Prueba de Video con Audio",
+    text: "Este es el popup para que pruebes tu video. La radio debería pausarse cuando aparece y reanudarse cuando lo cierras.",
+    // INSTRUCCIÓN: Pega aquí la URL de tu video MP4 de Cloudinary.
+    videoUrl: "https://res.cloudinary.com/ddmj6zevz/video/upload/v1756355792/NOTICIAS_he4dnu.mp4", 
+  },
+  {
+    time: "21:15", // Hora de la noche
+    title: "Mensaje de Audio",
+    text: "Una reflexión para terminar el día. Sube el volumen y escucha este mensaje especial.",
+    audioUrl: "https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197258/eclecticos_nicole_lbmh1d.mp3",
+    imageUrl: "https://picsum.photos/seed/nightaudio/1280/720",
+  },
 ];

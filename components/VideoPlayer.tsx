@@ -2,9 +2,10 @@ import React from 'react';
 
 interface VideoPlayerProps {
   videoUrl: string;
+  onEnded: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, onEnded }) => {
   if (!videoUrl) return null;
 
   return (
@@ -13,9 +14,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl }) => {
       className="w-full h-full object-cover"
       src={videoUrl}
       autoPlay
-      loop
       muted
       playsInline // Important for iOS autoplay
+      onEnded={onEnded}
     />
   );
 };

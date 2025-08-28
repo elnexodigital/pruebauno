@@ -3,9 +3,10 @@ import React, { useEffect, useRef } from 'react';
 interface AudioPlayerProps {
   videoId: string;
   onEnded?: () => void;
+  volume?: number;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, volume = 1.0 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -17,6 +18,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded }) => {
   useEffect(() => {
     onEndedRef.current = onEnded;
   }, [onEnded]);
+
+  // Effect to control audio volume
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     const audioEl = audioRef.current;
