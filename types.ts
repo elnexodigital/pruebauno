@@ -26,10 +26,7 @@ export interface Podcast {
 export interface MusicTrack {
   id: string;
   url: string; // Cloudinary URL
-  title: string;
   description: string;
-  // FIX: Added 'lento' and 'movido' to the list of allowed tags.
-  tags: Array<number | 'chill' | 'upbeat' | 'focus' | 'energetic' | 'lento' | 'movido'>;
 }
 
 export interface MediaItem {

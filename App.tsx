@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE } from './constants';
@@ -60,11 +61,16 @@ export default function App(): React.ReactNode {
         setLastPodcastPlayTime(now);
     } else {
         const track = getRandomItem(MUSIC_TRACKS);
+        const descriptionParts = track.description.split(':');
+        const potentialTitle = descriptionParts[0];
+        // Use the first part as title if it's reasonably short, otherwise a fallback.
+        const title = (potentialTitle && potentialTitle.length < 60) ? potentialTitle : "Música";
+
         newItem = {
             type: 'music',
             videoId: track.url,
             coverUrl: 'logo',
-            title: track.title,
+            title: title.trim(),
             description: track.description,
         };
     }
@@ -113,6 +119,7 @@ export default function App(): React.ReactNode {
       const randomStingerUrl = getRandomItem(AUDIO_STINGERS);
       try {
         stingerAudio = new Audio(randomStingerUrl);
+        stingerAudio.volume = 1.0; // Ensure stinger plays at maximum volume.
 
         const onStingerEnd = () => {
           setMainPlayerVolume(1.0); // Restore main audio volume
@@ -136,7 +143,7 @@ export default function App(): React.ReactNode {
         stingerAudio.addEventListener('ended', onStingerEnd);
         stingerAudio.addEventListener('error', onStingerError);
         
-        setMainPlayerVolume(0.2); // Duck main audio
+        setMainPlayerVolume(0.15); // Duck main audio a bit more to make the stinger stand out.
 
         stingerAudio.play().catch(error => {
           console.error("Audio stinger playback failed:", error);

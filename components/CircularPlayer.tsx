@@ -60,8 +60,12 @@ const CircularPlayer: React.FC<CircularPlayerProps> = ({ item, isPlaying, onTogg
         </div>
       </div>
       <div className="text-center w-[120px] md:w-[160px] h-12 flex flex-col justify-center items-center mt-1">
-        <p className="text-sm font-bold text-white truncate w-full">{item.title || "Contenido Aleatorio"}</p>
-        {item.artist && <p className="text-xs text-gray-300 truncate w-full">{item.artist}</p>}
+        {item.type === 'podcast' && (
+          <>
+            <p className="text-sm font-bold text-white truncate w-full">{item.title || "Contenido Aleatorio"}</p>
+            {item.artist && <p className="text-xs text-gray-300 truncate w-full">{item.artist}</p>}
+          </>
+        )}
       </div>
     </div>
   );
