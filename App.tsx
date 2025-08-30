@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE } from './constants';
@@ -42,9 +43,9 @@ export default function App(): React.ReactNode {
   const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
     const { forceMusic = false } = options;
     const now = Date.now();
-    const sixtyMinutes = 60 * 60 * 1000;
+    const thirtyMinutes = 30 * 60 * 1000;
     
-    const isTimeForPodcast = !lastPodcastPlayTime || (now - lastPodcastPlayTime > sixtyMinutes);
+    const isTimeForPodcast = !lastPodcastPlayTime || (now - lastPodcastPlayTime > thirtyMinutes);
     const shouldPlayPodcast = !forceMusic && isTimeForPodcast && Math.random() > 0.5;
     
     let newItem: MediaItem;
@@ -143,7 +144,7 @@ export default function App(): React.ReactNode {
         stingerAudio.addEventListener('ended', onStingerEnd);
         stingerAudio.addEventListener('error', onStingerError);
         
-        setMainPlayerVolume(0.15); // Duck main audio a bit more to make the stinger stand out.
+        setMainPlayerVolume(0.1); // Duck main audio even more to make the stinger stand out.
 
         stingerAudio.play().catch(error => {
           console.error("Audio stinger playback failed:", error);
@@ -288,6 +289,30 @@ export default function App(): React.ReactNode {
       default: return '';
     }
   }, [timeOfDay]);
+  
+  const characterInfo = useMemo(() => {
+    switch (timeOfDay) {
+      case TimeOfDay.Morning:
+        return {
+          src: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Grace-removebg-preview_julviv.png',
+          alt: 'Personaje de la mañana, Graciela Aquelarre',
+        };
+      case TimeOfDay.Afternoon:
+        return {
+          src: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Sergio-removebg-preview_wl4ewa.png',
+          alt: 'Personaje de la tarde, Sergio Será',
+        };
+      case TimeOfDay.Night:
+      case TimeOfDay.Noctambulo:
+        return {
+          src: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Gabriel-removebg-preview_u7x1rs.png',
+          alt: 'Personaje de la noche, Gabriel Callum',
+        };
+      default:
+        return null;
+    }
+  }, [timeOfDay]);
+
 
   const handleMainPlayerToggle = () => {
     if (isMainPlayerActive) {
@@ -359,6 +384,15 @@ export default function App(): React.ReactNode {
     >
       <BackgroundVideo videoUrl={backgroundUrl} overlayClass={overlayClass} />
 
+      {characterInfo && (
+        <img
+          src={characterInfo.src}
+          alt={characterInfo.alt}
+          className="absolute bottom-0 left-0 h-[70vh] w-auto object-contain object-bottom-left pointer-events-none animate-fade-in"
+          style={{ zIndex: 1 }}
+        />
+      )}
+
       <div className="absolute top-4 right-4 text-white bg-black bg-opacity-30 px-4 py-2 rounded-full text-base font-bold z-20 backdrop-blur-sm">
         {showInfoText}
       </div>
@@ -405,14 +439,15 @@ export default function App(): React.ReactNode {
         )}
       </div>
 
-      <div className="absolute bottom-4 right-4 z-20 flex items-center space-x-4">
+      <div className="absolute bottom-4 right-4 z-20 flex flex-col items-center space-y-2">
          <button
             onClick={() => shuffleMedia()}
-            aria-label="Mezclar medios"
+            aria-label="Reiniciar medios"
             className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors duration-300 shadow-lg"
           >
             <ShuffleIcon />
           </button>
+          <span className="font-display text-2xl md:text-3xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70">REINICIO</span>
       </div>
 
       <PopupModal content={activePopup} onClose={handleClosePopup} />
