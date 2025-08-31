@@ -1,14 +1,3 @@
-// Fix for TypeScript error "Property 'env' does not exist on type 'ImportMeta'".
-// The triple-slash directive for vite/client was not being found, so we manually
-// define the types for `import.meta.env` to resolve TypeScript errors.
-interface ImportMetaEnv {
-  readonly VITE_API_KEY?: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -28,7 +17,8 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-const apiKey = import.meta.env?.VITE_API_KEY;
+// Fix: Per Gemini API guidelines, the API key must be obtained from process.env.API_KEY. This also resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
+const apiKey = process.env.API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
@@ -89,27 +79,45 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
   }
 };
 
-const ApiKeyErrorScreen: React.FC = () => (
-  <div className="w-screen h-screen flex items-center justify-center bg-gray-900 text-white p-4">
-    <div className="max-w-lg text-center bg-gray-800 p-8 rounded-lg shadow-2xl border border-red-500/50">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-      <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
-      <p className="text-gray-300">
-        La variable de entorno <code>VITE_API_KEY</code> de Gemini no está configurada.
-      </p>
-      <p className="text-gray-400 mt-4 text-sm">
-        Por favor, añade la <code>VITE_API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
-      </p>
+const ApiKeyErrorScreen: React.FC = () => {
+  // Fix: Per Gemini API guidelines, the API key must be obtained from process.env.API_KEY. This also resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
+  const key = process.env.API_KEY;
+  const keyExists = !!key;
+  const keyLength = key?.length || 0;
+
+  return (
+    <div className="w-screen h-screen flex items-center justify-center bg-gray-900 text-white p-4">
+      <div className="max-w-lg text-center bg-gray-800 p-8 rounded-lg shadow-2xl border border-red-500/50">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
+        <p className="text-gray-300">
+          {/* Fix: Updated environment variable name to API_KEY as per guidelines. */}
+          La variable de entorno <code>API_KEY</code> de Gemini no está configurada.
+        </p>
+        <p className="text-gray-400 mt-4 text-sm">
+          {/* Fix: Updated environment variable name to API_KEY as per guidelines. */}
+          Por favor, añade la <code>API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
+        </p>
+        
+        {/* --- Debug Info --- */}
+        <div className="mt-6 pt-4 border-t border-gray-600 text-left text-xs text-yellow-300 font-mono">
+          <p className="font-bold mb-1">Información de depuración:</p>
+          <p>Clave encontrada: <span className={keyExists ? 'text-green-400' : 'text-red-400'}>{keyExists ? 'Sí' : 'No'}</span></p>
+          <p>Longitud de la clave: {keyLength}</p>
+          <p>Valor (primeros 4 caracteres): {key ? `${key.substring(0, 4)}...` : 'N/A'}</p>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 
 export default function App(): React.ReactNode {
   // Check for API Key at the very beginning.
-  if (!import.meta.env?.VITE_API_KEY) {
+  // Fix: Per Gemini API guidelines, the API key must be obtained from process.env.API_KEY. This also resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
+  if (!process.env.API_KEY) {
     return <ApiKeyErrorScreen />;
   }
 
