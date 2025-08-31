@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -18,9 +16,9 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// This is the official and correct way to access environment variables in a Vite project.
-// The variable name in Vercel MUST be VITE_PUBLIC_API_KEY.
-const apiKey = import.meta.env.VITE_PUBLIC_API_KEY;
+// The API key is injected at build time by the vite.config.ts file.
+// The variable name in Vercel MUST be KEY_VITE_KEY.
+const apiKey = process.env.KEY_VITE_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
@@ -30,7 +28,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
     console.error("Gemini AI client not initialized. API key might be missing or incorrectly named.");
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Fallo en la API", summary: "La clave VITE_PUBLIC_API_KEY de Gemini no está configurada. Por favor, revisa las variables de entorno del despliegue." }],
+        text: [{ headline: "Fallo en la API", summary: "La clave KEY_VITE_KEY de Gemini no está configurada. Por favor, revisa las variables de entorno del despliegue." }],
         sources: [],
     };
   }
@@ -89,10 +87,10 @@ const ApiKeyErrorScreen: React.FC = () => (
       </svg>
       <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
       <p className="text-gray-300">
-        La variable de entorno <code>VITE_PUBLIC_API_KEY</code> de Gemini no está configurada.
+        La variable de entorno <code>KEY_VITE_KEY</code> de Gemini no está configurada.
       </p>
       <p className="text-gray-400 mt-4 text-sm">
-        Por favor, asegúrate de que el nombre de la variable sea exactamente <code>VITE_PUBLIC_API_KEY</code> en la configuración de Vercel.
+        Por favor, asegúrate de que el nombre de la variable sea exactamente <code>KEY_VITE_KEY</code> en la configuración de Vercel.
       </p>
     </div>
   </div>
