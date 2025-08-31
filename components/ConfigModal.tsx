@@ -105,7 +105,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                 <StatusIndicator status={apiKeyStatus} />
                 {apiKeyStatus === 'error' && (
                     <p className="text-xs text-gray-500 mt-1">
-                        Asegúrate de que la variable de entorno <code>API_KEY</code> esté configurada correctamente en Vercel.
+                        Asegúrate de que la variable de entorno <code>VITE_API_KEY</code> esté configurada correctamente en Vercel.
                     </p>
                 )}
             </div>

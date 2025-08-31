@@ -1,3 +1,13 @@
+// Fix for TypeScript error "Property 'env' does not exist on type 'ImportMeta'".
+// The triple-slash directive for vite/client was not being found, so we manually
+// define the types for `import.meta.env` to resolve TypeScript errors.
+interface ImportMetaEnv {
+  readonly VITE_API_KEY?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -18,7 +28,8 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
+const apiKey = import.meta.env?.VITE_API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 
@@ -86,10 +97,10 @@ const ApiKeyErrorScreen: React.FC = () => (
       </svg>
       <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
       <p className="text-gray-300">
-        La variable de entorno <code>API_KEY</code> de Gemini no está configurada.
+        La variable de entorno <code>VITE_API_KEY</code> de Gemini no está configurada.
       </p>
       <p className="text-gray-400 mt-4 text-sm">
-        Por favor, añade la <code>API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
+        Por favor, añade la <code>VITE_API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
       </p>
     </div>
   </div>
@@ -98,7 +109,7 @@ const ApiKeyErrorScreen: React.FC = () => (
 
 export default function App(): React.ReactNode {
   // Check for API Key at the very beginning.
-  if (!process.env.API_KEY) {
+  if (!import.meta.env?.VITE_API_KEY) {
     return <ApiKeyErrorScreen />;
   }
 
