@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>El Nexo Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Brittany+Signature&family=Inter:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      .font-brittany {
+        font-family: 'Brittany Signature', cursive;
+      }
+      .font-typewriter {
+        font-family: 'Special Elite', monospace;
+      }
+      .font-display {
+        font-family: 'Bebas Neue', sans-serif;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      @keyframes blink {
+        50% { opacity: 0; }
+      }
+      .cursor-blink {
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes pulse-once {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+      }
+      .animate-pulse-once {
+        animation: pulse-once 0.5s ease-in-out;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      .animate-spin-slow {
+        animation: spin 10s linear infinite;
+      }
+      @keyframes tremble-subtle {
+        0%, 15%, 80%, 86%, 100% { transform: translate(0, 0) rotate(0); }
+        5% { transform: translate(-0.4px, 0.4px) rotate(-0.14deg); }
+        10% { transform: translate(0.4px, -0.4px) rotate(0.14deg); }
+        82% { transform: translate(0.3px, -0.3px) rotate(0.07deg); }
+        84% { transform: translate(-0.3px, 0.3px) rotate(-0.07deg); }
+      }
+      .animate-tremble {
+        animation: tremble-subtle 4s ease-in-out infinite;
+      }
+      @keyframes neon-glitch {
+        0%, 100% {
+          transform: translate(0, 0) rotate(0.1deg);
+          text-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(168, 85, 247, 0.6), 0 0 20px rgba(168, 85, 247, 0.6);
+        }
+        5% { transform: translate(-2px, 1px) rotate(-0.1deg); }
+        10% { transform: translate(2px, -1px) rotate(0.1deg); }
+        15% { transform: translate(-1px, 2px) rotate(-0.1deg); }
+        20% { transform: translate(1px, -2px) rotate(0.1deg); }
+        25%, 45%, 65%, 85% {
+          text-shadow: 0 0 8px rgba(255, 255, 255, 1), 0 0 18px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.8);
+          opacity: 0.9;
+        }
+        30%, 50%, 70%, 90% { opacity: 1; }
+        50.1% { /* Hard glitch */
+          transform: translate(3px, -3px) skewX(10deg);
+          text-shadow: none;
+          opacity: 0.7;
+        }
+        50.2% {
+          transform: translate(0, 0) skewX(0deg);
+          opacity: 1;
+        }
+      }
+      .animate-neon-glitch {
+        animation: neon-glitch 2s ease-in-out infinite;
+      }
+      @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.3s ease-out forwards;
+      }
+
+      @keyframes scale-up {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      .animate-scale-up {
+         animation: scale-up 0.3s ease-out forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "@google/genai": "https://esm.sh/@google/genai"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "name": "El Nexo Digital",
+  "description": "An application that plays random music and videos simultaneously with a time-based background. Includes a customizable popup modal for announcements.",
+  "requestFramePermissions": []
+}
