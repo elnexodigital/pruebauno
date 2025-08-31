@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -16,19 +18,19 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Using process.env.API_KEY as per @google/genai SDK guidelines.
-// Vercel's build environment makes this variable available during the build process.
-const apiKey = process.env.API_KEY;
+// This is the official and correct way to access environment variables in a Vite project.
+// The variable name in Vercel MUST be VITE_PUBLIC_API_KEY.
+const apiKey = import.meta.env.VITE_PUBLIC_API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 
 const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
   if (!ai) {
-    console.error("Gemini AI client not initialized. API key might be missing.");
+    console.error("Gemini AI client not initialized. API key might be missing or incorrectly named.");
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Fallo en la API", summary: "La clave de la API de Gemini no está configurada. Por favor, revisa las variables de entorno del despliegue." }],
+        text: [{ headline: "Fallo en la API", summary: "La clave VITE_PUBLIC_API_KEY de Gemini no está configurada. Por favor, revisa las variables de entorno del despliegue." }],
         sources: [],
     };
   }
@@ -87,10 +89,10 @@ const ApiKeyErrorScreen: React.FC = () => (
       </svg>
       <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
       <p className="text-gray-300">
-        La variable de entorno <code>API_KEY</code> de Gemini no está configurada.
+        La variable de entorno <code>VITE_PUBLIC_API_KEY</code> de Gemini no está configurada.
       </p>
       <p className="text-gray-400 mt-4 text-sm">
-        Por favor, añade la <code>API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
+        Por favor, asegúrate de que el nombre de la variable sea exactamente <code>VITE_PUBLIC_API_KEY</code> en la configuración de Vercel.
       </p>
     </div>
   </div>
