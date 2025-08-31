@@ -1,3 +1,4 @@
+// Fix: Completed the file which was truncated, causing a missing export error.
 import React, { useEffect, useRef } from 'react';
 import CloseIcon from './icons/CloseIcon';
 import { PopupContent, NewsItem } from '../types';
@@ -168,63 +169,44 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
             <div className="space-y-4">
               {content.text.map((item, index) => (
                 <div key={index}>
-                  <h3 className="font-semibold text-gray-800">{item.headline}</h3>
-                  <p className="text-gray-600 text-sm">{item.summary}</p>
+                  <h3 className="font-bold text-lg text-gray-800 mb-1">{item.headline}</h3>
+                  <p className="text-sm text-gray-600">{item.summary}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-600 whitespace-pre-wrap">{content.text}</p>
+            <p className="text-gray-700 whitespace-pre-wrap">{content.text}</p>
           )}
-          
+
+          {content.imageUrl && (
+            <img src={content.imageUrl} alt={content.title} className="mt-4 rounded-lg w-full object-cover max-h-48" />
+          )}
           {content.videoUrl && (
-            <div className={`rounded-lg mt-6 overflow-hidden bg-black ${content.videoAspectRatio ? `aspect-[${content.videoAspectRatio}]` : 'aspect-video'}`}>
-              <video
-                src={content.videoUrl}
-                className="w-full h-full object-contain"
-                autoPlay
-                controls
-                playsInline
-              />
-            </div>
-          )}
-
-          {content.imageUrl && !content.videoUrl && content.type !== 'news' && (
-           <img src={content.imageUrl} alt={content.title} className="rounded-lg mt-6 w-full object-cover"/>
-          )}
-
-          {hasSources && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-500 mb-2">Fuentes:</h3>
-              <ul className="text-xs text-gray-500 space-y-1 max-h-24 overflow-y-auto">
-                {content.sources?.map((source, index) => (
-                   source.web && (
-                      <li key={index}>
-                      <a
-                          href={source.web.uri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline hover:text-indigo-600 transition-colors break-all"
-                      >
-                          {source.web.title || source.web.uri}
-                      </a>
-                      </li>
-                   )
-                ))}
-              </ul>
+            <div className={`mt-4 w-full rounded-lg overflow-hidden bg-black aspect-[${content.videoAspectRatio || '16/9'}]`}>
+              <video src={content.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
             </div>
           )}
         </div>
-
-        {/* Footer: Hidden for loaded news popups to save space */}
-        {content.type !== 'news' && (
-          <div className="p-6 md:p-8 pt-0 flex-shrink-0">
-            <button
-              onClick={handleModalClose}
-              className="w-full px-4 py-2 mt-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-            >
-              Cerrar
-            </button>
+        
+        {/* Footer with sources */}
+        {hasSources && (
+          <div className="p-6 md:p-8 pt-4 flex-shrink-0 border-t border-gray-200">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Fuentes de Gemini</h4>
+            <ul className="space-y-1 text-sm max-h-24 overflow-y-auto">
+              {content.sources?.map((source, index) => (
+                <li key={index} className="truncate">
+                  <a
+                    href={source.web.uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                    title={source.web.title}
+                  >
+                    {source.web.title || source.web.uri}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

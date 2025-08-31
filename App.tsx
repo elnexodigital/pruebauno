@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -17,21 +15,12 @@ import TypewriterText from './components/TypewriterText';
 import OwnerControls from './components/OwnerControls';
 import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem } from './types';
 
-// FIX: Augment the global ImportMeta interface to include Vite's env variables.
-// This is necessary because this file is a module, and interface declarations
-// are locally scoped by default. `declare global` makes the augmentation apply globally.
-declare global {
-  interface ImportMeta {
-    readonly env: {
-      readonly VITE_API_KEY: string;
-    };
-  }
-}
-
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Correct way to access env variables in a Vite project.
-const apiKey = import.meta.env?.VITE_API_KEY;
+// Safely access the API key from environment variables. The execution environment
+// is expected to provide `process.env.VITE_API_KEY`. This check prevents a
+// ReferenceError if `process` is not defined in the browser.
+const apiKey = (typeof process !== 'undefined' && process.env) ? process.env['VITE_API_KEY'] : undefined;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
@@ -41,7 +30,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
     console.error("Gemini AI client not initialized. API key might be missing.");
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Fallo en la API", summary: "La clave de la API de Gemini no está configurada. Por favor, revisa las variables de entorno del despliegue." }],
+        text: [{ headline: "Fallo en la comunicación", summary: "La clave API para el servicio de noticias no está configurada. Contacta al administrador." }],
         sources: [],
     };
   }
@@ -92,46 +81,11 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
   }
 };
 
-const ApiKeyErrorScreen: React.FC = () => {
-  const key = import.meta.env?.VITE_API_KEY;
-  const keyExists = !!key;
-  const keyLength = key?.length || 0;
-
-  return (
-    <div className="w-screen h-screen flex items-center justify-center bg-gray-900 text-white p-4">
-      <div className="max-w-lg text-center bg-gray-800 p-8 rounded-lg shadow-2xl border border-red-500/50">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
-        <p className="text-gray-300">
-          La variable de entorno <code>VITE_API_KEY</code> de Gemini no está configurada.
-        </p>
-        <p className="text-gray-400 mt-4 text-sm">
-          Por favor, añade la <code>VITE_API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
-        </p>
-        
-        {/* --- Debug Info --- */}
-        <div className="mt-6 pt-4 border-t border-gray-600 text-left text-xs text-yellow-300 font-mono">
-          <p className="font-bold mb-1">Información de depuración:</p>
-          <p>Clave encontrada: <span className={keyExists ? 'text-green-400' : 'text-red-400'}>{keyExists ? 'Sí' : 'No'}</span></p>
-          <p>Longitud de la clave: {keyLength}</p>
-          <p>Valor (primeros 4 caracteres): {key ? `${key.substring(0, 4)}...` : 'N/A'}</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 
 export default function App(): React.ReactNode {
-  // Check for API Key at the very beginning.
-  if (!import.meta.env?.VITE_API_KEY) {
-    return <ApiKeyErrorScreen />;
-  }
-
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isStarted, setIsStarted] = useState<boolean>(false);
+  const [isOwner, setIsOwner] = useState<boolean>(false);
   
   const { timeOfDay, overlayClass } = useTimeOfDay();
 
@@ -153,6 +107,7 @@ export default function App(): React.ReactNode {
   const isLatestPlayerActive = activePlayer === 'latest';
   
   const stingerTimeoutRef = useRef<number | null>(null);
+  const stingerAudioContextRef = useRef<AudioContext | null>(null);
   
   const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
     const { forceMusic = false } = options;
@@ -205,6 +160,12 @@ export default function App(): React.ReactNode {
       console.error("Failed to parse user info from localStorage", error);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
+
+    // Check for owner query parameter
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('owner') === 'true') {
+      setIsOwner(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -233,7 +194,7 @@ export default function App(): React.ReactNode {
       const randomStingerUrl = getRandomItem(AUDIO_STINGERS);
       try {
         stingerAudio = new Audio(randomStingerUrl);
-        stingerAudio.volume = 1.0; // Ensure stinger plays at maximum volume.
+        stingerAudio.crossOrigin = "anonymous"; // Required for Web Audio API
 
         const onStingerEnd = () => {
           setMainPlayerVolume(1.0); // Restore main audio volume
@@ -257,7 +218,36 @@ export default function App(): React.ReactNode {
         stingerAudio.addEventListener('ended', onStingerEnd);
         stingerAudio.addEventListener('error', onStingerError);
         
-        setMainPlayerVolume(0.1); // Duck main audio even more to make the stinger stand out.
+        setMainPlayerVolume(0.1); // Duck main audio to make the stinger stand out.
+
+        // Use Web Audio API to boost volume beyond 1.0
+        try {
+          if (!stingerAudioContextRef.current) {
+            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContext) {
+              stingerAudioContextRef.current = new AudioContext();
+            }
+          }
+
+          if (stingerAudioContextRef.current && stingerAudioContextRef.current.state === 'suspended') {
+            stingerAudioContextRef.current.resume();
+          }
+
+          if (stingerAudioContextRef.current) {
+            const context = stingerAudioContextRef.current;
+            const source = context.createMediaElementSource(stingerAudio);
+            const gainNode = context.createGain();
+            gainNode.gain.value = 1.3; // 30% volume boost
+            source.connect(gainNode).connect(context.destination);
+          } else {
+            // Fallback for browsers without Web Audio API
+            stingerAudio.volume = 1.0;
+          }
+        } catch (webAudioError) {
+          console.error("Web Audio API for stinger failed, using standard volume.", webAudioError);
+          stingerAudio.volume = 1.0;
+        }
+
 
         stingerAudio.play().catch(error => {
           console.error("Audio stinger playback failed:", error);
@@ -521,9 +511,11 @@ export default function App(): React.ReactNode {
     >
       <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
 
-      <div className="absolute top-4 left-4 z-20">
-        <OwnerControls onShowPopup={handleShowNewsPopup} onShowConfig={handleOpenConfig} />
-      </div>
+      {isOwner && (
+        <div className="absolute top-4 left-4 z-20">
+          <OwnerControls onShowPopup={handleShowNewsPopup} onShowConfig={handleOpenConfig} />
+        </div>
+      )}
 
       {characterInfo && (
         <img
@@ -540,8 +532,8 @@ export default function App(): React.ReactNode {
           </h1>
       </div>
       
-      <div className="absolute right-[-1.5rem] md:right-[-2.5rem] top-0 bottom-0 flex items-center z-10 pointer-events-none">
-          <p className="transform rotate-90 font-display text-xl md:text-2xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70 whitespace-nowrap">
+      <div className="absolute right-0 top-0 h-full w-auto flex items-center z-10 pointer-events-none">
+          <p className="[writing-mode:vertical-rl] transform rotate-180 font-display text-xl md:text-2xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70 whitespace-nowrap">
               {showInfoText}
           </p>
       </div>
