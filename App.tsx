@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -17,7 +18,8 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Fix: Per Gemini API guidelines, the API key must be obtained from process.env.API_KEY. This also resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
+// Correct way to access env variables in a Vite project.
+// FIX: Adhering to guidelines to use process.env.API_KEY.
 const apiKey = process.env.API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
@@ -80,7 +82,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 };
 
 const ApiKeyErrorScreen: React.FC = () => {
-  // Fix: Per Gemini API guidelines, the API key must be obtained from process.env.API_KEY. This also resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
+  // FIX: Adhering to guidelines to use process.env.API_KEY.
   const key = process.env.API_KEY;
   const keyExists = !!key;
   const keyLength = key?.length || 0;
@@ -92,12 +94,12 @@ const ApiKeyErrorScreen: React.FC = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
+        {/* FIX: Updating error message to reference API_KEY instead of VITE_API_KEY. */}
         <p className="text-gray-300">
-          {/* Fix: Updated environment variable name to API_KEY as per guidelines. */}
           La variable de entorno <code>API_KEY</code> de Gemini no está configurada.
         </p>
+        {/* FIX: Updating error message to reference API_KEY instead of VITE_API_KEY. */}
         <p className="text-gray-400 mt-4 text-sm">
-          {/* Fix: Updated environment variable name to API_KEY as per guidelines. */}
           Por favor, añade la <code>API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
         </p>
         
@@ -116,7 +118,7 @@ const ApiKeyErrorScreen: React.FC = () => {
 
 export default function App(): React.ReactNode {
   // Check for API Key at the very beginning.
-  // Fix: Per Gemini API guidelines, the API key must be obtained from process.env.API_KEY. This also resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
+  // FIX: Adhering to guidelines to use process.env.API_KEY.
   if (!process.env.API_KEY) {
     return <ApiKeyErrorScreen />;
   }
