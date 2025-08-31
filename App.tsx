@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -5,6 +6,7 @@ import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, PO
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
+import ConfigModal from './components/ConfigModal';
 import WelcomeForm from './components/WelcomeForm';
 import ShuffleIcon from './components/icons/ShuffleIcon';
 import CircularPlayer from './components/CircularPlayer';
@@ -16,19 +18,16 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// The API key is injected at build time by the vite.config.ts file.
-// The variable name in Vercel MUST be KEY_VITE_KEY.
-const apiKey = process.env.KEY_VITE_KEY;
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 
 const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
   if (!ai) {
-    console.error("Gemini AI client not initialized. API key might be missing or incorrectly named.");
+    console.error("Gemini AI client not initialized. API key might be missing.");
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Fallo en la API", summary: "La clave KEY_VITE_KEY de Gemini no está configurada. Por favor, revisa las variables de entorno del despliegue." }],
+        text: [{ headline: "Fallo en la API", summary: "La clave de la API de Gemini no está configurada. Por favor, revisa las variables de entorno del despliegue." }],
         sources: [],
     };
   }
@@ -87,10 +86,10 @@ const ApiKeyErrorScreen: React.FC = () => (
       </svg>
       <h1 className="text-2xl font-bold text-white mb-2">Configuración Requerida</h1>
       <p className="text-gray-300">
-        La variable de entorno <code>KEY_VITE_KEY</code> de Gemini no está configurada.
+        La variable de entorno <code>API_KEY</code> de Gemini no está configurada.
       </p>
       <p className="text-gray-400 mt-4 text-sm">
-        Por favor, asegúrate de que el nombre de la variable sea exactamente <code>KEY_VITE_KEY</code> en la configuración de Vercel.
+        Por favor, añade la <code>API_KEY</code> en la configuración de tu entorno de despliegue (por ejemplo, en Vercel) para que la aplicación pueda funcionar.
       </p>
     </div>
   </div>
@@ -99,7 +98,7 @@ const ApiKeyErrorScreen: React.FC = () => (
 
 export default function App(): React.ReactNode {
   // Check for API Key at the very beginning.
-  if (!apiKey) {
+  if (!process.env.API_KEY) {
     return <ApiKeyErrorScreen />;
   }
 
@@ -117,6 +116,7 @@ export default function App(): React.ReactNode {
   const [mainPlayerVolume, setMainPlayerVolume] = useState<number>(1.0);
   
   const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [shownPopups, setShownPopups] = useState<string[]>([]);
   const [playerToResume, setPlayerToResume] = useState<'main' | 'latest' | null>(null);
 
@@ -165,7 +165,6 @@ export default function App(): React.ReactNode {
     setMainPlayerItem(newItem);
     setActivePlayer('main');
     setCurrentAudioId(newItem.videoId);
-    setCurrentVideoUrl(getRandomItem(VIDEO_URLS));
   }, [lastPodcastPlayTime]);
 
   useEffect(() => {
@@ -354,6 +353,9 @@ export default function App(): React.ReactNode {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(user));
     setUserInfo(user);
   };
+  
+  const handleOpenConfig = () => setIsConfigModalOpen(true);
+  const handleCloseConfig = () => setIsConfigModalOpen(false);
 
   const handleStart = () => {
     setIsStarted(true);
@@ -459,17 +461,6 @@ export default function App(): React.ReactNode {
     shuffleMedia();
   }, [shuffleMedia]);
 
-  const handleVideoEnded = useCallback(() => {
-    if (VIDEO_URLS.length <= 1) return;
-
-    let newVideoUrl;
-    do {
-      newVideoUrl = getRandomItem(VIDEO_URLS);
-    } while (newVideoUrl === currentVideoUrl);
-    
-    setCurrentVideoUrl(newVideoUrl);
-  }, [currentVideoUrl]);
-
   const audioPlayerVolume = isMainPlayerActive && mainPlayerItem?.type === 'music' ? mainPlayerVolume : 1.0;
 
   if (!userInfo) {
@@ -503,7 +494,7 @@ export default function App(): React.ReactNode {
       <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
 
       <div className="absolute top-4 left-4 z-20">
-        <OwnerControls onShowPopup={handleShowNewsPopup} />
+        <OwnerControls onShowPopup={handleShowNewsPopup} onShowConfig={handleOpenConfig} />
       </div>
 
       {characterInfo && (
@@ -541,7 +532,7 @@ export default function App(): React.ReactNode {
           onTogglePlay={handleLatestPlayerToggle}
         />
         <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black">
-          <VideoPlayer videoUrl={currentVideoUrl} onEnded={handleVideoEnded} />
+          <VideoPlayer videoUrl={currentVideoUrl} />
         </div>
       </div>
 
@@ -565,7 +556,10 @@ export default function App(): React.ReactNode {
 
       <div className="absolute bottom-4 right-4 z-20 flex flex-col items-center space-y-2">
          <button
-            onClick={() => shuffleMedia()}
+            onClick={() => {
+              shuffleMedia();
+              setCurrentVideoUrl(getRandomItem(VIDEO_URLS));
+            }}
             aria-label="Reiniciar medios"
             className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors duration-300 shadow-lg"
           >
@@ -575,7 +569,14 @@ export default function App(): React.ReactNode {
       </div>
 
       <PopupModal content={activePopup} onClose={handleClosePopup} />
-      
+      {isConfigModalOpen && (
+        <ConfigModal
+          onClose={handleCloseConfig}
+          userInfo={userInfo}
+          timeGreeting={timeGreeting}
+          ai={ai}
+        />
+      )}
     </main>
   );
 }
