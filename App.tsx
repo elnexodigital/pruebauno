@@ -12,17 +12,29 @@ import SquarePlayer from './components/SquarePlayer';
 import BackgroundImage from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
 import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo } from './types';
+import OwnerControls from './components/OwnerControls';
+import ConfigModal from './components/ConfigModal';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// FIX: The method of accessing the API key has been updated to use process.env.API_KEY
-// as per the Gemini API coding guidelines, which resolves the TypeScript error with import.meta.env.
-// The guidelines state to assume the API_KEY is always available.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// Access the API key from Vite's environment variables, which is the correct way for this project setup.
+const apiKey = (import.meta as any).env.VITE_API_KEY;
+
+// Initialize the GoogleGenAI client only if the API key is provided.
+// This prevents the app from crashing and allows for graceful error handling.
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 
 const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
+  if (!ai) {
+    console.error("API Key for Gemini is not configured. Please set the VITE_API_KEY environment variable.");
+    return {
+        title: "Error de Configuración",
+        text: [{ headline: "Clave API no configurada", summary: "La clave API para el servicio de noticias no está configurada. Por favor, revisa las variables de entorno de la aplicación." }],
+        sources: [],
+    };
+  }
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -71,10 +83,14 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 };
 
 const fetchWeather = async (): Promise<WeatherInfo | null> => {
+  if (!ai) {
+    console.error("API Key for Gemini is not configured. Cannot fetch weather.");
+    return null;
+  }
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: "Cuál es el clima actual en Montevideo, Uruguay? Dame la temperatura en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.",
+      contents: "Cuál es el clima actual en Juan Lacaze, Colonia, Uruguay? Dame la temperatura en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.",
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -115,6 +131,8 @@ export default function App(): React.ReactNode {
   const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
   const [shownPopups, setShownPopups] = useState<string[]>([]);
   const [playerToResume, setPlayerToResume] = useState<'main' | 'latest' | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
@@ -168,7 +186,11 @@ export default function App(): React.ReactNode {
     try {
       const storedUser = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (storedUser) {
-        setUserInfo(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUserInfo(parsedUser);
+        if (parsedUser.name && parsedUser.name.toLowerCase() === 'leo castrillo') {
+            setIsOwner(true);
+        }
       }
     } catch (error) {
       console.error("Failed to parse user info from localStorage", error);
@@ -292,15 +314,43 @@ export default function App(): React.ReactNode {
     
   }, [isMainPlayerActive, mainPlayerItem]);
 
-  const handleShowPopup = useCallback((content: PopupContent) => {
-    // Pause main audio if popup has its own sound, video, or is a news popup (for TTS)
-    if (content.audioUrl || content.videoUrl || content.type === 'news') {
-      if (activePlayer) {
-        setPlayerToResume(activePlayer);
-        setActivePlayer(null); // Pause main audio
-      }
+  const handleShowPopup = useCallback(async (content?: PopupContent) => {
+      let popupContent: PopupContent | null = content || null;
+      if (!popupContent) {
+        // This logic is for manual triggering (e.g., OwnerControls)
+        const placeholder: PopupContent = {
+            type: 'news',
+            time: '',
+            title: "Generando Noticias...",
+            text: "Un momento por favor, estamos conectando con el nexo para traerte las últimas novedades.",
+        };
+        setActivePopup(placeholder);
+        
+        const [newsContent, weatherContent] = await Promise.all([
+          fetchNews(),
+          fetchWeather()
+        ]);
+
+        if (newsContent) {
+           popupContent = { ...placeholder, ...newsContent, weather: weatherContent ?? undefined };
+        } else {
+           popupContent = { 
+               ...placeholder, 
+               title: 'Error', 
+               text: 'No se pudieron obtener las noticias.' 
+           };
+        }
     }
-    setActivePopup(content);
+
+    if (popupContent) {
+        if (popupContent.audioUrl || popupContent.videoUrl || popupContent.type === 'news') {
+          if (activePlayer) {
+            setPlayerToResume(activePlayer);
+            setActivePlayer(null);
+          }
+        }
+        setActivePopup(popupContent);
+    }
   }, [activePlayer]);
 
   // Effect for scheduled popups
@@ -315,7 +365,7 @@ export default function App(): React.ReactNode {
 
       if (scheduledPopup && !shownPopups.includes(scheduledPopup.time)) {
         if (scheduledPopup.type === 'news') {
-          handleShowPopup({
+           handleShowPopup({
               ...scheduledPopup,
               title: "Generando Noticias...",
               text: "Un momento por favor, estamos conectando con el nexo para traerte las últimas novedades.",
@@ -366,6 +416,9 @@ export default function App(): React.ReactNode {
   const handleUserSaved = (user: UserInfo) => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(user));
     setUserInfo(user);
+    if (user.name && user.name.toLowerCase() === 'leo castrillo') {
+        setIsOwner(true);
+    }
   };
   
   const handleStart = () => {
@@ -585,6 +638,15 @@ export default function App(): React.ReactNode {
           />
         )}
       </div>
+      
+      {isOwner && (
+        <div className="absolute top-4 right-4 z-20">
+            <OwnerControls 
+                onShowPopup={() => handleShowPopup()} 
+                onShowConfig={() => setShowConfigModal(true)}
+            />
+        </div>
+      )}
 
       <div className="absolute bottom-4 right-4 z-20 flex flex-col items-center space-y-2">
          <button
@@ -598,6 +660,14 @@ export default function App(): React.ReactNode {
       </div>
 
       <PopupModal content={activePopup} onClose={handleClosePopup} />
+      {showConfigModal && (
+          <ConfigModal 
+            onClose={() => setShowConfigModal(false)}
+            userInfo={userInfo}
+            timeGreeting={timeGreeting}
+            ai={ai}
+          />
+      )}
     </main>
   );
 }

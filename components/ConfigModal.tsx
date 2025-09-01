@@ -7,8 +7,7 @@ interface ConfigModalProps {
   onClose: () => void;
   userInfo: UserInfo | null;
   timeGreeting: string;
-  // FIX: The `ai` prop is now non-nullable as it is guaranteed to be initialized.
-  ai: GoogleGenAI;
+  ai: GoogleGenAI | null;
 }
 
 type ApiStatus = 'idle' | 'checking' | 'success' | 'error';
@@ -51,9 +50,13 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiStatus>('idle');
 
   useEffect(() => {
+    if (!ai) {
+      setApiKeyStatus('error');
+      return;
+    }
+
     const verifyApiKey = async () => {
       setApiKeyStatus('checking');
-      // FIX: Removed null check for `ai` as it is now guaranteed to be initialized.
       try {
         // A very lightweight call to check the API key
         await ai.models.generateContent({
@@ -102,9 +105,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                 <h3 className="text-sm font-semibold text-gray-500 mb-1">Conexión API</h3>
                 <StatusIndicator status={apiKeyStatus} />
                 {apiKeyStatus === 'error' && (
-                    // FIX: Updated environment variable name in the error message.
                     <p className="text-xs text-gray-500 mt-1">
-                        Asegúrate de que la variable de entorno <code>API_KEY</code> esté configurada correctamente.
+                        Asegúrate de que la variable de entorno <code>VITE_API_KEY</code> esté configurada correctamente.
                     </p>
                 )}
             </div>
