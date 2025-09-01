@@ -5,15 +5,13 @@ import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, PO
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
-import ConfigModal from './components/ConfigModal';
 import WelcomeForm from './components/WelcomeForm';
 import ShuffleIcon from './components/icons/ShuffleIcon';
 import CircularPlayer from './components/CircularPlayer';
 import SquarePlayer from './components/SquarePlayer';
 import BackgroundImage from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
-import OwnerControls from './components/OwnerControls';
-import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem } from './types';
+import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo } from './types';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -81,11 +79,41 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
   }
 };
 
+const fetchWeather = async (): Promise<WeatherInfo | null> => {
+  if (!ai) {
+    console.error("Gemini AI client not initialized for weather fetch.");
+    return null;
+  }
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: "Cuál es el clima actual en Montevideo, Uruguay? Dame la temperatura en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            temperature: { type: Type.STRING },
+            description: { type: Type.STRING },
+            windSpeed: { type: Type.STRING },
+          },
+          required: ["temperature", "description", "windSpeed"],
+        },
+      },
+    });
+
+    const weatherData = JSON.parse(response.text);
+    return weatherData as WeatherInfo;
+
+  } catch (error) {
+    console.error("Error fetching or parsing weather from Gemini:", error);
+    return null;
+  }
+};
 
 export default function App(): React.ReactNode {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isStarted, setIsStarted] = useState<boolean>(false);
-  const [isOwner, setIsOwner] = useState<boolean>(false);
   
   const { timeOfDay, overlayClass } = useTimeOfDay();
 
@@ -98,7 +126,6 @@ export default function App(): React.ReactNode {
   const [mainPlayerVolume, setMainPlayerVolume] = useState<number>(1.0);
   
   const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [shownPopups, setShownPopups] = useState<string[]>([]);
   const [playerToResume, setPlayerToResume] = useState<'main' | 'latest' | null>(null);
 
@@ -159,12 +186,6 @@ export default function App(): React.ReactNode {
     } catch (error) {
       console.error("Failed to parse user info from localStorage", error);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
-    }
-
-    // Check for owner query parameter
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('owner') === 'true') {
-      setIsOwner(true);
     }
   }, []);
 
@@ -237,7 +258,7 @@ export default function App(): React.ReactNode {
             const context = stingerAudioContextRef.current;
             const source = context.createMediaElementSource(stingerAudio);
             const gainNode = context.createGain();
-            gainNode.gain.value = 1.3; // 30% volume boost
+            gainNode.gain.value = 2.5; // 150% volume boost
             source.connect(gainNode).connect(context.destination);
           } else {
             // Fallback for browsers without Web Audio API
@@ -312,11 +333,17 @@ export default function App(): React.ReactNode {
               title: "Generando Noticias...",
               text: "Un momento por favor, estamos conectando con el nexo para traerte las últimas novedades.",
           });
-          const newsContent = await fetchNews();
+          
+          const [newsContent, weatherContent] = await Promise.all([
+            fetchNews(),
+            fetchWeather()
+          ]);
+
           if (newsContent) {
             handleShowPopup({
               ...scheduledPopup,
               ...newsContent,
+              weather: weatherContent ?? undefined,
             });
           }
         } else {
@@ -349,32 +376,11 @@ export default function App(): React.ReactNode {
     setPlayerToResume(null);
   };
   
-  const handleShowNewsPopup = useCallback(async () => {
-    const newsSchedule = POPUP_SCHEDULE.find(p => p.type === 'news');
-    if (newsSchedule) {
-      handleShowPopup({
-        ...newsSchedule,
-        title: "Generando Noticias...",
-        text: "Un momento por favor, estamos conectando con el nexo para traerte las últimas novedades.",
-      });
-      const newsContent = await fetchNews();
-      if (newsContent) {
-        handleShowPopup({
-          ...newsSchedule,
-          ...newsContent,
-        });
-      }
-    }
-  }, [handleShowPopup]);
-
   const handleUserSaved = (user: UserInfo) => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(user));
     setUserInfo(user);
   };
   
-  const handleOpenConfig = () => setIsConfigModalOpen(true);
-  const handleCloseConfig = () => setIsConfigModalOpen(false);
-
   const handleStart = () => {
     setIsStarted(true);
 
@@ -474,10 +480,29 @@ export default function App(): React.ReactNode {
   };
 
   const handleAudioEnded = useCallback(() => {
-    // When a track (music or podcast) ends, shuffle to a new item.
-    // By not forcing music, podcasts can naturally enter the rotation.
     shuffleMedia();
   }, [shuffleMedia]);
+  
+  const handleAudioError = useCallback(() => {
+    console.warn("Audio failed to load. Skipping to the next track.");
+    handleAudioEnded();
+  }, [handleAudioEnded]);
+
+  const handleVideoEnded = useCallback(() => {
+    setCurrentVideoUrl(prevUrl => {
+      if (VIDEO_URLS.length <= 1) return prevUrl;
+      let newUrl;
+      do {
+        newUrl = getRandomItem(VIDEO_URLS);
+      } while (newUrl === prevUrl);
+      return newUrl;
+    });
+  }, []);
+  
+  const handleVideoError = useCallback(() => {
+    console.warn("Video failed to load. Skipping to the next video.");
+    handleVideoEnded();
+  }, [handleVideoEnded]);
 
   const audioPlayerVolume = isMainPlayerActive && mainPlayerItem?.type === 'music' ? mainPlayerVolume : 1.0;
 
@@ -511,12 +536,6 @@ export default function App(): React.ReactNode {
     >
       <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
 
-      {isOwner && (
-        <div className="absolute top-4 left-4 z-20">
-          <OwnerControls onShowPopup={handleShowNewsPopup} onShowConfig={handleOpenConfig} />
-        </div>
-      )}
-
       {characterInfo && (
         <img
           src={characterInfo.src}
@@ -532,8 +551,8 @@ export default function App(): React.ReactNode {
           </h1>
       </div>
       
-      <div className="absolute right-0 top-0 h-full w-auto flex items-center z-10 pointer-events-none">
-          <p className="[writing-mode:vertical-rl] transform rotate-180 font-display text-xl md:text-2xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70 whitespace-nowrap">
+      <div className="absolute right-2 md:right-3 top-0 h-full flex items-center z-10 pointer-events-none">
+          <p className="[writing-mode:vertical-rl] transform rotate-180 font-display text-lg md:text-xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70 whitespace-nowrap">
               {showInfoText}
           </p>
       </div>
@@ -552,14 +571,20 @@ export default function App(): React.ReactNode {
           onTogglePlay={handleLatestPlayerToggle}
         />
         <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black">
-          <VideoPlayer videoUrl={currentVideoUrl} />
+          <VideoPlayer 
+            videoUrl={currentVideoUrl} 
+            loop={false}
+            onEnded={handleVideoEnded}
+            onError={handleVideoError}
+          />
         </div>
       </div>
 
       {isPlaying && currentAudioId && (
         <AudioPlayer 
           videoId={currentAudioId} 
-          onEnded={handleAudioEnded} 
+          onEnded={handleAudioEnded}
+          onError={handleAudioError}
           volume={audioPlayerVolume}
         />
       )}
@@ -576,10 +601,7 @@ export default function App(): React.ReactNode {
 
       <div className="absolute bottom-4 right-4 z-20 flex flex-col items-center space-y-2">
          <button
-            onClick={() => {
-              shuffleMedia();
-              setCurrentVideoUrl(getRandomItem(VIDEO_URLS));
-            }}
+            onClick={() => shuffleMedia()}
             aria-label="Reiniciar medios"
             className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors duration-300 shadow-lg"
           >
@@ -589,14 +611,6 @@ export default function App(): React.ReactNode {
       </div>
 
       <PopupModal content={activePopup} onClose={handleClosePopup} />
-      {isConfigModalOpen && (
-        <ConfigModal
-          onClose={handleCloseConfig}
-          userInfo={userInfo}
-          timeGreeting={timeGreeting}
-          ai={ai}
-        />
-      )}
     </main>
   );
 }

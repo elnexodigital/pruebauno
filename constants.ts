@@ -84,7 +84,7 @@ export const VIDEO_URLS: string[] = [
 
 // Placeholder for the main logo, used as a spinning record in the music player.
 // INSTRUCTION: Replace this with the final logo's Cloudinary URL.
-export const NEXO_DIGITAL_LOGO_URL = 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1755726078/logo_el_nexo_digital_kbxqvp.png';
+export const NEXO_DIGITAL_LOGO_URL = 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756714882/logo_el_nexo_digital_assa82.png';
 
 
 // INSTRUCCIONES: Reemplaza y añade a esta lista con tus canciones de Cloudinary.

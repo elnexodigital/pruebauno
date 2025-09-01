@@ -49,6 +49,12 @@ export interface NewsItem {
   summary: string;
 }
 
+export interface WeatherInfo {
+  temperature: string;
+  description: string;
+  windSpeed: string;
+}
+
 export interface PopupContent {
   time: string; // "HH:MM" format
   type: 'static' | 'news';
@@ -59,4 +65,5 @@ export interface PopupContent {
   audioUrl?: string;
   sources?: GroundingSource[];
   videoAspectRatio?: string;
+  weather?: WeatherInfo;
 }

@@ -1,8 +1,9 @@
 // Fix: Completed the file which was truncated, causing a missing export error.
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import CloseIcon from './icons/CloseIcon';
 import { PopupContent, NewsItem } from '../types';
 import { NEWS_INTRO_URL, NEWS_OUTRO_URL } from '../constants';
+import WeatherIcon from './WeatherIcon';
 
 interface PopupModalProps {
   content: PopupContent | null;
@@ -29,74 +30,92 @@ const GeminiIcon: React.FC = () => (
 const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const outroHasPlayed = useRef(false);
-  
+  const [errorNoVoice, setErrorNoVoice] = useState<string | null>(null);
+  const autoCloseTimer = useRef<number | null>(null);
+
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
 
-  // Effect for sequenced news audio (intro -> TTS -> outro)
+  // Effect for automatic TTS playback and auto-closing
   useEffect(() => {
+    // Clear any previous timers or error messages when content changes
+    setErrorNoVoice(null);
+    if (autoCloseTimer.current) {
+        clearTimeout(autoCloseTimer.current);
+        autoCloseTimer.current = null;
+    }
+
     if (!isNewsLoaded) return;
 
-    // Reset state for this popup instance
+    // Reset state for this instance of the popup
     outroHasPlayed.current = false;
-    window.speechSynthesis?.cancel();
+    let hasSpoken = false;
 
-    const introAudio = new Audio(NEWS_INTRO_URL);
-    
-    const playOutro = () => {
-      if (!outroHasPlayed.current) {
-        outroHasPlayed.current = true;
-        const outroAudio = new Audio(NEWS_OUTRO_URL);
-        outroAudio.play().catch(e => console.error("Outro audio playback failed", e));
-      }
+    const playOutroAndClose = () => {
+      if (outroHasPlayed.current) return;
+      outroHasPlayed.current = true;
+      const outroAudio = new Audio(NEWS_OUTRO_URL);
+      outroAudio.onended = onClose; 
+      outroAudio.play().catch(e => {
+        console.error("Outro audio playback failed, closing modal directly.", e);
+        onClose(); 
+      });
     };
 
-    const textToSpeak = (content.text as NewsItem[])
-      .map(item => `${item.headline}. ${item.summary}`)
-      .join('\n');
+    const startSpeech = () => {
+        if (!content || hasSpoken) return;
 
-    const startSpeechSynthesis = () => {
-        if (!textToSpeak) return;
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = 'es-UY';
-        utterance.onend = playOutro;
+        const textToSpeak = (content.text as NewsItem[])
+          .map(item => `${item.headline}. ${item.summary}`)
+          .join('\n\n');
         
+        if (!textToSpeak) return;
+
         const voices = window.speechSynthesis.getVoices();
         const googleVoice = voices.find(v => v.lang.startsWith('es') && v.name.includes('Google'));
         const anySpanishVoice = voices.find(v => v.lang.startsWith('es'));
-        
-        if (googleVoice) {
-            utterance.voice = googleVoice;
-        } else if (anySpanishVoice) {
-            utterance.voice = anySpanishVoice;
-        }
+        const voiceToUse = googleVoice || anySpanishVoice;
 
-        window.speechSynthesis.speak(utterance);
-    };
-      
-    const handleIntroEnd = () => {
-        // Voices might not be loaded yet. We check, and if not, we wait for the `voiceschanged` event.
-        if (window.speechSynthesis.getVoices().length === 0) {
-            window.speechSynthesis.onvoiceschanged = startSpeechSynthesis;
+        if (voiceToUse) {
+            hasSpoken = true;
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'es-UY';
+            utterance.voice = voiceToUse;
+            utterance.onend = playOutroAndClose;
+            utterance.onerror = (event) => {
+                console.error('SpeechSynthesis Utterance Error:', event.error);
+            };
+            window.speechSynthesis.speak(utterance);
         } else {
-            startSpeechSynthesis();
+            console.warn("No suitable Spanish TTS voice found.");
+            setErrorNoVoice("No encontré una voz en español instalada en tu dispositivo, por lo que no puedo leer las noticias.");
+            // Set a timer to auto-close the modal after 10 seconds
+            autoCloseTimer.current = window.setTimeout(() => {
+                onClose();
+            }, 10000);
         }
     };
     
-    introAudio.onended = handleIntroEnd;
+    const introAudio = new Audio(NEWS_INTRO_URL);
+    introAudio.play().catch(e => console.error("Intro audio playback failed", e));
 
-    introAudio.play().catch(e => {
-      console.error("Intro audio playback failed, starting TTS directly.", e);
-      handleIntroEnd(); // Fallback if intro fails
-    });
+    const speechDelay = setTimeout(() => {
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = startSpeech;
+        } else {
+          startSpeech();
+        }
+    }, 1500);
 
     return () => {
-      // Cleanup: stop all sounds and remove event listener
-      introAudio.pause();
-      window.speechSynthesis.cancel();
+      clearTimeout(speechDelay);
+      if (autoCloseTimer.current) {
+        clearTimeout(autoCloseTimer.current);
+      }
       window.speechSynthesis.onvoiceschanged = null;
+      window.speechSynthesis.cancel();
     };
 
-  }, [content, isNewsLoaded]);
+  }, [isNewsLoaded, content, onClose]);
 
   // Effect for generic popup audio (non-news)
   useEffect(() => {
@@ -111,15 +130,14 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
       audioRef.current = null;
     };
   }, [content?.audioUrl]);
-
-
+  
   const handleModalClose = () => {
-    window.speechSynthesis?.cancel(); // Always stop TTS on close
+    window.speechSynthesis?.cancel();
     
     if (isNewsLoaded && !outroHasPlayed.current) {
-        outroHasPlayed.current = true; // prevent double play from onend event
+        outroHasPlayed.current = true;
         const outroAudio = new Audio(NEWS_OUTRO_URL);
-        outroAudio.play().catch(e => console.error("Outro on close failed", e));
+        outroAudio.play().catch(e => console.error("Outro on manual close failed", e));
     }
     
     onClose();
@@ -153,9 +171,11 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
               <div className="absolute top-6 right-14 w-8 h-8 text-indigo-400 z-10">
                 <GeminiIcon />
               </div>
-              <div>
-                <h2 className="font-brittany text-4xl text-gray-900 pr-16">El Nexo Digital</h2>
-                <p className="text-sm text-gray-600 mt-1">una forma diferente de saber la noticia</p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="font-brittany text-4xl text-gray-900">El Nexo Digital</h2>
+                  <p className="text-sm text-gray-600 mt-1">una forma diferente de saber la noticia</p>
+                </div>
               </div>
             </>
           ) : (
@@ -163,8 +183,28 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
           )}
         </div>
 
+        {/* Weather section */}
+        {content.weather && (
+          <div className="px-6 md:px-8 pt-4">
+             <div className="bg-gray-100 rounded-lg p-3 flex items-center justify-between text-sm text-gray-700">
+               <div className="flex items-center gap-2">
+                 <div className="w-6 h-6 text-gray-600">
+                    <WeatherIcon description={content.weather.description} />
+                 </div>
+                 <span className="font-bold text-lg">{content.weather.temperature}°C</span>
+               </div>
+               <span className="capitalize">{content.weather.description}</span>
+               <span>Viento: {content.weather.windSpeed}</span>
+            </div>
+          </div>
+        )}
+
         {/* Scrollable Content Body */}
         <div className="flex-grow overflow-y-auto px-6 md:px-8 py-4">
+          {errorNoVoice && (
+            <p className="text-red-600 font-bold text-center mb-4 p-2 bg-red-100 rounded-md">{errorNoVoice}</p>
+          )}
+
           {Array.isArray(content.text) ? (
             <div className="space-y-4">
               {content.text.map((item, index) => (
@@ -183,7 +223,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
           )}
           {content.videoUrl && (
             <div className={`mt-4 w-full rounded-lg overflow-hidden bg-black aspect-[${content.videoAspectRatio || '16/9'}]`}>
-              <video src={content.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+              <video key={content.videoUrl} src={content.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
             </div>
           )}
         </div>

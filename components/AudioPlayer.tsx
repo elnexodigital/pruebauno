@@ -3,10 +3,11 @@ import React, { useEffect, useRef } from 'react';
 interface AudioPlayerProps {
   videoId: string;
   onEnded?: () => void;
+  onError?: () => void;
   volume?: number;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, volume = 1.0 }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, onError, volume = 1.0 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -163,6 +164,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, volume = 1.
       src={videoId}
       autoPlay
       onEnded={onEnded}
+      onError={onError}
       crossOrigin="anonymous" // Required for MediaElementAudioSourceNode
       style={{ display: 'none' }}
     />
