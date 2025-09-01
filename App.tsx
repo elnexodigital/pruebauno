@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -15,10 +17,8 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Safely access the API key from environment variables. The execution environment
-// is expected to provide `process.env.VITE_API_KEY`. This check prevents a
-// ReferenceError if `process` is not defined in the browser.
-const apiKey = (typeof process !== 'undefined' && process.env) ? process.env['VITE_API_KEY'] : undefined;
+// Fix: Use process.env.API_KEY as per the coding guidelines to resolve environment variable access issues.
+const apiKey = process.env.API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
