@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
@@ -17,21 +15,14 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Fix: Use process.env.API_KEY as per the coding guidelines to resolve environment variable access issues.
-const apiKey = process.env.API_KEY;
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+// FIX: The method of accessing the API key has been updated to use process.env.API_KEY
+// as per the Gemini API coding guidelines, which resolves the TypeScript error with import.meta.env.
+// The guidelines state to assume the API_KEY is always available.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 
 const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
-  if (!ai) {
-    console.error("Gemini AI client not initialized. API key might be missing.");
-    return {
-        title: "Error de Configuración",
-        text: [{ headline: "Fallo en la comunicación", summary: "La clave API para el servicio de noticias no está configurada. Contacta al administrador." }],
-        sources: [],
-    };
-  }
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -80,10 +71,6 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 };
 
 const fetchWeather = async (): Promise<WeatherInfo | null> => {
-  if (!ai) {
-    console.error("Gemini AI client not initialized for weather fetch.");
-    return null;
-  }
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
