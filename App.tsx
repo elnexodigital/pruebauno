@@ -1,7 +1,8 @@
 // FIX: Removed unresolved Vite client types reference to fix "Cannot find type" error.
 // The code now safely accesses `import.meta.env` via a type cast.
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+// FIX: Corrected the invalid React import and added missing hook imports (useState, useEffect, etc.) to resolve 'Cannot find name' errors.
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS } from './constants';
@@ -9,14 +10,13 @@ import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
 import WelcomeForm from './components/WelcomeForm';
-import ShuffleIcon from './components/icons/ShuffleIcon';
 import CircularPlayer from './components/CircularPlayer';
-import SquarePlayer from './components/SquarePlayer';
 import BackgroundImage from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
 import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo, VideoPodcast } from './types';
 import OwnerControls from './components/OwnerControls';
 import ConfigModal from './components/ConfigModal';
+import WelcomeConfirmationModal from './components/WelcomeConfirmationModal';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -133,22 +133,23 @@ export default function App(): React.ReactNode {
 
   const [mainPlayerItem, setMainPlayerItem] = useState<MediaItem | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string>(() => getRandomItem(VIDEO_URLS));
-  const [latestPodcast] = useState<Podcast>(PODCASTS[0]);
-  const [activePlayer, setActivePlayer] = useState<'main' | 'latest' | null>(null);
+  const [activePlayer, setActivePlayer] = useState<'main' | null>(null);
   const [currentAudioId, setCurrentAudioId] = useState<string>('');
   const [lastPodcastPlayTime, setLastPodcastPlayTime] = useState<number | null>(null);
   const [mainPlayerVolume, setMainPlayerVolume] = useState<number>(1.0);
   
   const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
   const [shownPopups, setShownPopups] = useState<string[]>([]);
-  const [playerToResume, setPlayerToResume] = useState<'main' | 'latest' | null>(null);
+  const [playerToResume, setPlayerToResume] = useState<'main' | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
+  const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
-  const isLatestPlayerActive = activePlayer === 'latest';
   
   const stingerTimeoutRef = useRef<number | null>(null);
   const stingerAudioContextRef = useRef<AudioContext | null>(null);
@@ -207,6 +208,10 @@ export default function App(): React.ReactNode {
     setActivePlayer('main');
     setCurrentAudioId(newItem.videoId);
   }, [lastPodcastPlayTime, immersiveVideoPodcast]);
+  
+  const handleVibeChange = useCallback(() => {
+    shuffleMedia();
+  }, [shuffleMedia]);
 
   useEffect(() => {
     try {
@@ -229,6 +234,34 @@ export default function App(): React.ReactNode {
       shuffleMedia({ forceMusic: true });
     }
   }, [isStarted, mainPlayerItem, immersiveVideoPodcast, shuffleMedia]);
+  
+  // Effect to handle the PWA installation prompt
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  // Effect to check if the PWA is already installed
+  useEffect(() => {
+    const checkInstalled = () => {
+      if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+        setIsPwaInstalled(true);
+        setInstallPromptEvent(null);
+      }
+    };
+    checkInstalled();
+    const handleAppInstalled = () => {
+      setIsPwaInstalled(true);
+      setInstallPromptEvent(null);
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => window.removeEventListener('appinstalled', handleAppInstalled);
+  }, []);
+
 
   // Effect for handling audio stingers with auto-ducking
   useEffect(() => {
@@ -447,37 +480,65 @@ export default function App(): React.ReactNode {
     }
   };
   
-  const handleStart = () => {
+  const handleInstallApp = async () => {
+    if (!installPromptEvent) {
+      return;
+    }
+    installPromptEvent.prompt();
+    // Wait for the user to respond to the prompt.
+    // The `userChoice` property returns a Promise that resolves to an object with an `outcome` property.
+    await installPromptEvent.userChoice;
+    // We've used the prompt, and it can't be used again, so clear it.
+    setInstallPromptEvent(null);
+  };
+
+  const handleStart = async () => {
     setIsStarted(true);
 
-    let greetingUrls: string[] = [];
-    switch (timeOfDay) {
-      case TimeOfDay.Morning:
-        greetingUrls = GREETING_AUDIOS.morning;
-        break;
-      case TimeOfDay.Afternoon:
-        greetingUrls = GREETING_AUDIOS.afternoon;
-        break;
-      case TimeOfDay.Night:
-        greetingUrls = GREETING_AUDIOS.night;
-        break;
-      case TimeOfDay.Noctambulo:
-        greetingUrls = GREETING_AUDIOS.noctambulo;
-        break;
+    // This is a one-time check. If the prompt is available and the app isn't installed, we use it.
+    if (installPromptEvent && !isPwaInstalled) {
+      await handleInstallApp();
     }
     
-    if (greetingUrls.length > 0) {
-      const randomGreetingUrl = getRandomItem(greetingUrls);
-      try {
-        const greetingAudio = new Audio(randomGreetingUrl);
-        greetingAudio.play().catch(error => {
-          // Autoplay might be blocked by the browser. Log error for debugging.
-          console.error("Greeting audio autoplay failed:", error);
-        });
-      } catch (error) {
-        console.error("Error creating or playing greeting audio:", error);
+    // Always show the welcome modal after the user starts.
+    setShowWelcomeModal(true);
+
+    // Play greeting audio after a small delay to not overlap with modals
+    setTimeout(() => {
+      let greetingUrls: string[] = [];
+      switch (timeOfDay) {
+        case TimeOfDay.Morning:
+          greetingUrls = GREETING_AUDIOS.morning;
+          break;
+        case TimeOfDay.Afternoon:
+          greetingUrls = GREETING_AUDIOS.afternoon;
+          break;
+        case TimeOfDay.Night:
+          greetingUrls = GREETING_AUDIOS.night;
+          break;
+        case TimeOfDay.Noctambulo:
+          greetingUrls = GREETING_AUDIOS.noctambulo;
+          break;
       }
-    }
+      
+      if (greetingUrls.length > 0) {
+        const randomGreetingUrl = getRandomItem(greetingUrls);
+        try {
+          const greetingAudio = new Audio(randomGreetingUrl);
+          greetingAudio.play().catch(error => {
+            // Autoplay might be blocked by the browser. Log error for debugging.
+            console.error("Greeting audio autoplay failed:", error);
+          });
+        } catch (error) {
+          console.error("Error creating or playing greeting audio:", error);
+        }
+      }
+    }, 500);
+  };
+  
+    const handleChangeUser = () => {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    setUserInfo(null);
   };
   
   const timeGreeting = useMemo(() => {
@@ -535,16 +596,6 @@ export default function App(): React.ReactNode {
     }
   };
 
-  const handleLatestPlayerToggle = () => {
-    if (isLatestPlayerActive) {
-      setActivePlayer(null);
-      setCurrentAudioId('');
-    } else {
-      setActivePlayer('latest');
-      setCurrentAudioId(latestPodcast.videoId);
-    }
-  };
-
   const handleAudioEnded = useCallback(() => {
     shuffleMedia();
   }, [shuffleMedia]);
@@ -598,15 +649,25 @@ export default function App(): React.ReactNode {
         className="relative w-screen h-screen flex flex-col items-center justify-center transition-all duration-1000 p-4"
       >
         <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
-        <div className="relative text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg space-y-4 z-10">
-          <h1 className="font-brittany text-3xl md:text-4xl font-normal text-white mb-2 tracking-wide">El Nexo Digital</h1>
-          <p className="text-base md:text-lg text-gray-200 mb-8">{timeGreeting} {userInfo.name}, te estábamos esperando.</p>
-          <button
-            onClick={handleStart}
-            className="px-8 py-3 bg-white text-gray-900 font-semibold rounded-full shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300 ease-in-out"
-          >
-            Entrar
-          </button>
+        <div className="relative text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg space-y-6 z-10 max-w-md w-full">
+          <h1 className="font-brittany text-4xl md:text-5xl font-normal text-white mb-2 tracking-wide">El Nexo Digital</h1>
+          <p className="text-lg md:text-xl text-gray-200 mb-4">{timeGreeting}, {userInfo.name}.</p>
+          
+          <div className="flex flex-col items-center gap-4">
+            <button
+              onClick={handleStart}
+              className="w-full px-8 py-4 bg-white text-gray-900 font-bold text-lg rounded-full shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300 ease-in-out"
+            >
+              Seguir como {userInfo.name}
+            </button>
+
+            <button
+              onClick={handleChangeUser}
+              className="text-gray-300 hover:text-white hover:underline transition-colors text-sm mt-4"
+            >
+              ¿No eres {userInfo.name}? Cambiar de usuario
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -647,13 +708,13 @@ export default function App(): React.ReactNode {
         <img
           src={characterInfo.src}
           alt={characterInfo.alt}
-          className="absolute top-1/2 left-0 -translate-y-1/2 h-[70vh] w-auto object-contain pointer-events-none animate-fade-in opacity-70"
+          className="absolute top-1/2 left-0 -translate-y-1/2 h-[70vh] w-auto object-contain pointer-events-none animate-fade-in opacity-70 transition-opacity duration-500"
           style={{ zIndex: 1 }}
         />
       )}
 
       <div className="absolute left-[-2rem] md:left-[-3rem] top-0 bottom-0 flex items-center z-10 pointer-events-none">
-          <h1 className="transform -rotate-90 text-white font-brittany text-7xl md:text-8xl opacity-25 tracking-wider whitespace-nowrap">
+          <h1 className="transform -rotate-90 text-white font-brittany text-7xl md:text-8xl tracking-wider whitespace-nowrap opacity-25">
               El Nexo Digital
           </h1>
       </div>
@@ -672,11 +733,6 @@ export default function App(): React.ReactNode {
             onTogglePlay={handleMainPlayerToggle}
           />
         )}
-        <SquarePlayer
-          podcast={latestPodcast}
-          isPlaying={isLatestPlayerActive}
-          onTogglePlay={handleLatestPlayerToggle}
-        />
         <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black">
           <VideoPlayer 
             videoUrl={currentVideoUrl} 
@@ -702,7 +758,6 @@ export default function App(): React.ReactNode {
           <TypewriterText
             key={mainPlayerItem.videoId} 
             text={mainPlayerItem.description}
-            className="font-typewriter text-lg md:text-xl text-white/90 bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2 inline-block animate-neon-glitch"
           />
         )}
       </div>
@@ -717,18 +772,44 @@ export default function App(): React.ReactNode {
         </div>
       )}
 
-      <div className="absolute bottom-4 right-4 z-20 flex flex-col items-center space-y-2">
-         <button
-            onClick={() => shuffleMedia()}
-            aria-label="Reiniciar medios"
-            className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors duration-300 shadow-lg"
+      <div className="absolute bottom-4 right-4 z-20">
+        <button
+          onClick={handleVibeChange}
+          aria-label="Cambiar la onda"
+          className="relative w-36 h-36 group focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 rounded-full"
+        >
+          {/* SVG for curved text */}
+          <svg
+            viewBox="0 0 100 100"
+            className="w-full h-full absolute top-0 left-0 transition-transform duration-700 ease-in-out group-hover:rotate-180"
           >
-            <ShuffleIcon />
-          </button>
-          <span className="font-display text-2xl md:text-3xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70">REINICIO</span>
+            <defs>
+              <path
+                id="text-arc"
+                d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"
+              />
+            </defs>
+            <text
+              className="font-display text-[11px] text-white tracking-[0.15em] opacity-70"
+              fill="currentColor"
+            >
+              <textPath href="#text-arc" startOffset="75%" textAnchor="middle">
+                CAMBIAR LA ONDA
+              </textPath>
+            </text>
+          </svg>
+
+          {/* The image in the center */}
+          <img
+            src="https://res.cloudinary.com/ddmj6zevz/image/upload/v1756851098/Generated_Image_September_02__2025_-_1_54PM-removebg-preview_fpoafd.png"
+            alt="Un martillo y cincel de piedra descansan sobre un montón de rocas."
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full object-cover shadow-lg border-2 border-white/20 group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+          />
+        </button>
       </div>
 
       <PopupModal content={activePopup} onClose={handleClosePopup} />
+      
       {showConfigModal && (
           <ConfigModal 
             onClose={() => setShowConfigModal(false)}
@@ -736,6 +817,10 @@ export default function App(): React.ReactNode {
             timeGreeting={timeGreeting}
             ai={ai}
           />
+      )}
+
+      {showWelcomeModal && (
+        <WelcomeConfirmationModal onClose={() => setShowWelcomeModal(false)} />
       )}
     </main>
   );

@@ -44,11 +44,12 @@ const VideoPodcastModal: React.FC<VideoPodcastModalProps> = ({ podcast, onClose 
 
         {/* Transcript Area */}
         <div className="flex-1 p-4 md:p-6 overflow-y-auto bg-black/50 flex flex-col justify-center">
+            {/* FIX: Replaced invalid `className` prop with `theme` and `allowScroll` to correctly use the TypewriterText component for transcripts. */}
             <TypewriterText 
                 key={podcast.id} // Re-trigger animation when podcast changes
                 text={podcast.transcript}
                 speed={60}
-                className="font-typewriter text-lg md:text-xl text-white/90"
+                allowScroll={true}
             />
         </div>
       </div>

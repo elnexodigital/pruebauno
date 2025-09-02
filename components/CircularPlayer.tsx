@@ -23,24 +23,23 @@ const CircularPlayer: React.FC<CircularPlayerProps> = ({ item, isPlaying, onTogg
     prevItemIdRef.current = item.videoId;
   }, [item.videoId]);
 
-
   const isMusic = item.type === 'music';
   const animationClass = isAnimating ? 'animate-pulse-once' : '';
   const spinClass = isPlaying ? 'animate-spin-slow' : '';
-
+  
   return (
     <div className={`flex flex-col items-center gap-2 transition-transform duration-500 ${animationClass}`}>
       <div className="w-[120px] md:w-[160px] text-center mb-1">
         <h2 className="font-display text-2xl md:text-3xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70">COMPAÑÍA</h2>
       </div>
       <div
-        className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] rounded-full shadow-2xl overflow-hidden group bg-gray-900/50"
+        className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] rounded-full shadow-2xl overflow-hidden group transition-all duration-500 bg-gray-900/50"
       >
         {isMusic ? (
            <img
             src={NEXO_DIGITAL_LOGO_URL}
-            alt="El Nexo Digital Logo"
-            className={`w-full h-full object-cover ${spinClass}`}
+            alt={"El Nexo Digital Logo"}
+            className={`w-full h-full object-cover p-2 ${spinClass}`}
            />
         ) : (
           <img 

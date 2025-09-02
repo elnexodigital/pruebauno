@@ -16,7 +16,7 @@ const SquarePlayer: React.FC<SquarePlayerProps> = ({ podcast, isPlaying, onToggl
         <h2 className="font-display text-2xl md:text-3xl text-white tracking-[0.05em] md:tracking-[0.075em] opacity-70">NEW PODCAST</h2>
       </div>
       <div
-        className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] rounded-2xl shadow-2xl overflow-hidden group bg-gray-900/50"
+        className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] rounded-2xl shadow-2xl overflow-hidden group transition-all duration-500 bg-gray-900/50"
       >
         <img 
           src={podcast.coverUrl}
