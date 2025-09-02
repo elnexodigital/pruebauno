@@ -37,6 +37,14 @@ export interface MediaItem {
   description?: string;
 }
 
+export interface VideoPodcast {
+  id: string;
+  title: string;
+  coverUrl: string;
+  videoUrl: string;
+  transcript: string;
+}
+
 export interface GroundingSource {
     web: {
         uri: string;

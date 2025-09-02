@@ -14,12 +14,13 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, imageUrl, overlayClas
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       setError('Por favor, dime tu nombre.');
       return;
     }
     setError('');
-    onSave({ name });
+    onSave({ name: trimmedName });
   };
 
   return (

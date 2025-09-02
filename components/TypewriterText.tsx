@@ -1,52 +1,72 @@
-
-
 import React, { useState, useEffect } from 'react';
 
 interface TypewriterTextProps {
   text: string;
   speed?: number;
   className?: string;
+  allowScroll?: boolean;
 }
 
-const TypewriterText: React.FC<TypewriterTextProps> = ({ text, speed = 50, className = '' }) => {
+const TypewriterText: React.FC<TypewriterTextProps> = ({ text, speed = 50, className = '', allowScroll = false }) => {
   const [displayedText, setDisplayedText] = useState('');
-  const [isComplete, setIsComplete] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
 
+  // Universal typing effect
   useEffect(() => {
     setDisplayedText('');
-    setIsComplete(false);
-    setIsVisible(true);
-    
-    let typingInterval: number;
-    let hideTimeout: number;
-
     if (text) {
       let i = 0;
-      typingInterval = window.setInterval(() => {
+      const typingInterval = window.setInterval(() => {
         if (i < text.length) {
           setDisplayedText(text.substring(0, i + 1));
           i++;
         } else {
           clearInterval(typingInterval);
-          setIsComplete(true);
         }
       }, speed);
-
-      hideTimeout = window.setTimeout(() => {
-        setIsVisible(false);
-      }, 20000); // Hide after 20 seconds
-
-      return () => {
-        clearInterval(typingInterval);
-        clearTimeout(hideTimeout);
-      };
+      
+      return () => clearInterval(typingInterval);
     }
   }, [text, speed]);
 
+  // Logic for the non-scrolling, auto-hiding version (for music descriptions)
+  const [isVisible, setIsVisible] = useState(true);
+  useEffect(() => {
+    if (allowScroll) return; // This logic is only for the non-scrolling version
+    
+    setIsVisible(true);
+    const hideTimeout = window.setTimeout(() => {
+      setIsVisible(false);
+    }, 20000); // Hide after 20 seconds
+
+    return () => clearTimeout(hideTimeout);
+  }, [text, allowScroll]);
+
+
+  if (allowScroll) {
+    return (
+      <div className="relative w-full">
+        {/* Full text, semi-transparent, for scrolling */}
+        <p 
+          aria-hidden="true" 
+          className={`${className} text-white/40 whitespace-pre-wrap break-words`}
+        >
+          {text}
+        </p>
+        {/* Typing text, opaque, super-imposed */}
+        <p className={`${className} absolute top-0 left-0 w-full text-white/95 whitespace-pre-wrap break-words`}>
+          {displayedText}
+          {displayedText.length < text.length && <span className="cursor-blink">|</span>}
+        </p>
+      </div>
+    );
+  }
+  
+  // Render logic for the music description typewriter
   if (!isVisible) {
     return null;
   }
+  
+  const isComplete = displayedText.length === text.length;
 
   return (
     <p className={className}>

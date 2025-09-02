@@ -7,6 +7,7 @@ interface ConfigModalProps {
   onClose: () => void;
   userInfo: UserInfo | null;
   timeGreeting: string;
+  // FIX: The `ai` prop can be null if the API key is not available.
   ai: GoogleGenAI | null;
 }
 
@@ -50,12 +51,12 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiStatus>('idle');
 
   useEffect(() => {
-    if (!ai) {
-      setApiKeyStatus('error');
-      return;
-    }
-
     const verifyApiKey = async () => {
+      // FIX: Handle the case where the AI client could not be initialized.
+      if (!ai) {
+        setApiKeyStatus('error');
+        return;
+      }
       setApiKeyStatus('checking');
       try {
         // A very lightweight call to check the API key
@@ -105,9 +106,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                 <h3 className="text-sm font-semibold text-gray-500 mb-1">Conexión API</h3>
                 <StatusIndicator status={apiKeyStatus} />
                 {apiKeyStatus === 'error' && (
-                    <p className="text-xs text-gray-500 mt-1">
-                        Asegúrate de que la variable de entorno <code>VITE_API_KEY</code> esté configurada correctamente.
-                    </p>
+                  <p className="text-xs text-gray-500 mt-1">La clave de API (VITE_API_KEY) no se encontró o no es válida. Las funciones de IA están desactivadas.</p>
                 )}
             </div>
         </div>

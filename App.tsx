@@ -1,7 +1,10 @@
+// FIX: Removed unresolved Vite client types reference to fix "Cannot find type" error.
+// The code now safely accesses `import.meta.env` via a type cast.
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
-import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL } from './constants';
+import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS } from './constants';
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
@@ -11,30 +14,38 @@ import CircularPlayer from './components/CircularPlayer';
 import SquarePlayer from './components/SquarePlayer';
 import BackgroundImage from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
-import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo } from './types';
+import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo, VideoPodcast } from './types';
 import OwnerControls from './components/OwnerControls';
 import ConfigModal from './components/ConfigModal';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Access the API key from Vite's environment variables, which is the correct way for this project setup.
-const apiKey = (import.meta as any).env.VITE_API_KEY;
+// FIX: Safely initialize the AI client to prevent crashes in non-Vite environments.
+const getApiKey = (): string | undefined => {
+  try {
+    // This will throw if import.meta.env is undefined.
+    // FIX: Cast `import.meta` to `any` to bypass TypeScript error when 'vite/client' types are not found.
+    return (import.meta as any).env.VITE_API_KEY;
+  } catch (e) {
+    console.warn("Could not access import.meta.env. VITE_API_KEY is not available. AI features will be disabled.");
+    return undefined;
+  }
+};
 
-// Initialize the GoogleGenAI client only if the API key is provided.
-// This prevents the app from crashing and allows for graceful error handling.
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const apiKey = getApiKey();
+const ai: GoogleGenAI | null = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 
 const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
   if (!ai) {
-    console.error("API Key for Gemini is not configured. Please set the VITE_API_KEY environment variable.");
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Clave API no configurada", summary: "La clave API para el servicio de noticias no está configurada. Por favor, revisa las variables de entorno de la aplicación." }],
+        text: [{ headline: "Clave de API no encontrada", summary: "La variable VITE_API_KEY no se encontró en este entorno. Las funciones de IA están deshabilitadas." }],
         sources: [],
     };
   }
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -84,7 +95,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 
 const fetchWeather = async (): Promise<WeatherInfo | null> => {
   if (!ai) {
-    console.error("API Key for Gemini is not configured. Cannot fetch weather.");
+    console.warn("AI client not initialized, cannot fetch weather.");
     return null;
   }
   try {
@@ -133,6 +144,7 @@ export default function App(): React.ReactNode {
   const [playerToResume, setPlayerToResume] = useState<'main' | 'latest' | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
@@ -142,10 +154,25 @@ export default function App(): React.ReactNode {
   const stingerAudioContextRef = useRef<AudioContext | null>(null);
   
   const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
+    // If an immersive video is playing, don't shuffle anything new.
+    if (immersiveVideoPodcast) return;
+
     const { forceMusic = false } = options;
     const now = Date.now();
     const thirtyMinutes = 30 * 60 * 1000;
-    
+
+    // Decide what to play next. Give video podcasts a ~20% chance if not forced to music.
+    const canPlayVideoPodcast = VIDEO_PODCASTS.length > 0 && !forceMusic;
+    const shouldPlayVideoPodcast = canPlayVideoPodcast && Math.random() < 0.2;
+
+    if (shouldPlayVideoPodcast) {
+      const videoPodcast = getRandomItem(VIDEO_PODCASTS);
+      setImmersiveVideoPodcast(videoPodcast);
+      setActivePlayer(null); // Stop any other audio
+      setMainPlayerItem(null);
+      return;
+    }
+
     const isTimeForPodcast = !lastPodcastPlayTime || (now - lastPodcastPlayTime > thirtyMinutes);
     const shouldPlayPodcast = !forceMusic && isTimeForPodcast && Math.random() > 0.5;
     
@@ -165,7 +192,6 @@ export default function App(): React.ReactNode {
         const track = getRandomItem(MUSIC_TRACKS);
         const descriptionParts = track.description.split(':');
         const potentialTitle = descriptionParts[0];
-        // Use the first part as title if it's reasonably short, otherwise a fallback.
         const title = (potentialTitle && potentialTitle.length < 60) ? potentialTitle : "Música";
 
         newItem = {
@@ -180,7 +206,7 @@ export default function App(): React.ReactNode {
     setMainPlayerItem(newItem);
     setActivePlayer('main');
     setCurrentAudioId(newItem.videoId);
-  }, [lastPodcastPlayTime]);
+  }, [lastPodcastPlayTime, immersiveVideoPodcast]);
 
   useEffect(() => {
     try {
@@ -188,7 +214,7 @@ export default function App(): React.ReactNode {
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setUserInfo(parsedUser);
-        if (parsedUser.name && parsedUser.name.toLowerCase() === 'leo castrillo') {
+        if (parsedUser.name && parsedUser.name.trim().toLowerCase() === 'leo castrillo') {
             setIsOwner(true);
         }
       }
@@ -199,10 +225,10 @@ export default function App(): React.ReactNode {
   }, []);
 
   useEffect(() => {
-    if (isStarted && !mainPlayerItem) {
+    if (isStarted && !mainPlayerItem && !immersiveVideoPodcast) {
       shuffleMedia({ forceMusic: true });
     }
-  }, [isStarted, mainPlayerItem, shuffleMedia]);
+  }, [isStarted, mainPlayerItem, immersiveVideoPodcast, shuffleMedia]);
 
   // Effect for handling audio stingers with auto-ducking
   useEffect(() => {
@@ -416,7 +442,7 @@ export default function App(): React.ReactNode {
   const handleUserSaved = (user: UserInfo) => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(user));
     setUserInfo(user);
-    if (user.name && user.name.toLowerCase() === 'leo castrillo') {
+    if (user.name && user.name.trim().toLowerCase() === 'leo castrillo') {
         setIsOwner(true);
     }
   };
@@ -544,6 +570,22 @@ export default function App(): React.ReactNode {
     handleVideoEnded();
   }, [handleVideoEnded]);
 
+  const handleImmersiveVideoEnded = useCallback(() => {
+    setImmersiveVideoPodcast(null);
+    // Use a timeout to allow for the exit animation/transition before starting next media
+    setTimeout(() => {
+      shuffleMedia({ forceMusic: true });
+    }, 300);
+  }, [shuffleMedia]);
+
+  const handleTestVideoPodcast = () => {
+    if (VIDEO_PODCASTS.length > 0) {
+      const randomVP = getRandomItem(VIDEO_PODCASTS);
+      setActivePlayer(null); // Stop any other audio
+      setImmersiveVideoPodcast(randomVP);
+    }
+  };
+
   const audioPlayerVolume = isMainPlayerActive && mainPlayerItem?.type === 'music' ? mainPlayerVolume : 1.0;
 
   if (!userInfo) {
@@ -568,6 +610,31 @@ export default function App(): React.ReactNode {
         </div>
       </div>
     );
+  }
+  
+  if (immersiveVideoPodcast) {
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div 
+          className="relative w-full max-w-sm aspect-[9/16] bg-black shadow-2xl rounded-lg flex flex-col overflow-hidden animate-scale-up"
+        >
+          <div className="w-full aspect-square">
+            <VideoPlayer 
+              videoUrl={immersiveVideoPodcast.videoUrl}
+              loop={false}
+              muted={false}
+              onEnded={handleImmersiveVideoEnded}
+              onError={handleImmersiveVideoEnded} // Also exit on error
+            />
+          </div>
+          <div className="flex-1 relative p-6 flex items-start justify-center overflow-y-auto">
+            <p className="font-typewriter text-lg md:text-xl text-white/95 text-center w-full whitespace-pre-wrap">
+              {immersiveVideoPodcast.transcript}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -614,6 +681,7 @@ export default function App(): React.ReactNode {
           <VideoPlayer 
             videoUrl={currentVideoUrl} 
             loop={false}
+            muted={true}
             onEnded={handleVideoEnded}
             onError={handleVideoError}
           />
@@ -644,6 +712,7 @@ export default function App(): React.ReactNode {
             <OwnerControls 
                 onShowPopup={() => handleShowPopup()} 
                 onShowConfig={() => setShowConfigModal(true)}
+                onTestVideoPodcast={handleTestVideoPodcast}
             />
         </div>
       )}

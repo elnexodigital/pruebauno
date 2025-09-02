@@ -3,11 +3,12 @@ import React from 'react';
 interface VideoPlayerProps {
   videoUrl: string;
   loop?: boolean;
+  muted?: boolean;
   onEnded?: () => void;
   onError?: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, loop = true, onEnded, onError }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, loop = true, muted = true, onEnded, onError }) => {
   if (!videoUrl) return null;
 
   return (
@@ -16,7 +17,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, loop = true, onEnde
       className="w-full h-full object-cover"
       src={videoUrl}
       autoPlay
-      muted
+      muted={muted}
       loop={loop}
       playsInline // Important for iOS autoplay
       onEnded={onEnded}

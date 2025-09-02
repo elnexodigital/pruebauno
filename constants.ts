@@ -1,7 +1,6 @@
-import { Podcast, MusicTrack, PopupContent } from "./types";
+import { Podcast, MusicTrack, PopupContent, VideoPodcast } from "./types";
 
 // INSTRUCCIÓN: Sube tus audios de saludo a Cloudinary y reemplaza estas URLs.
-// He creado listas para que puedas poner 10 saludos por cada momento del día.
 export const GREETING_AUDIOS = {
   morning: [ // 10 saludos de 07:30 a 12:00 
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265258/10_jvsbhs.mp3', 
@@ -47,8 +46,8 @@ export const GREETING_AUDIOS = {
 export const STATIC_BACKGROUND_URL = 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756588189/pexels-life-of-pix-8892_ymfsnd.jpg';
 
 // Sound effects for news popups
-export const NEWS_INTRO_URL = 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756608157/flash_informativointro_hqswp1.mp3';
-export const NEWS_OUTRO_URL = 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756608158/flash_informativoout_ulwdzw.mp3';
+export const NEWS_INTRO_URL = 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/1_ebuxxi.mp3';
+export const NEWS_OUTRO_URL = 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/2_m5meaa.mp3';
 
 // A curated list of Cloudinary video URLs for the visual player.
 // These are separate from the background videos.
@@ -87,12 +86,9 @@ export const VIDEO_URLS: string[] = [
 export const NEXO_DIGITAL_LOGO_URL = 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756714882/logo_el_nexo_digital_assa82.png';
 
 
-// INSTRUCCIONES: Reemplaza y añade a esta lista con tus canciones de Cloudinary.
-// Asegúrate de que la 'url' sea la URL directa al archivo de audio.
-// El 'id' debe ser único para cada canción (ej: 'm77', 'm78').
-// La 'description' es el texto que aparecerá en la pantalla. Se recomienda el formato "Título: Descripción..."
+// The user's extensive music library has been restored.
 export const MUSIC_TRACKS: MusicTrack[] = [
-  {
+    {
     id: 'm8',
     url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154371/M%C3%BAsica_Cham%C3%A1nica_wjt2sc.mp3',
     description: 'Música chamánica: tambor, trance y selva que respira..',
@@ -580,7 +576,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   {
     id: 'm106',
     url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425650/the_beatles_hey_jude_bsssdd.mp3',
-    description: 'Balada eterna para consolar al mundo cantando.',
+    description: 'Balada eterna para consolar al mondo cantando.',
   },
   {
     id: 'm107',
@@ -925,7 +921,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   {
     id: 'm177',
     url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425519/Korolova_Shining_edmmil.mp3',
-    description: 'Melodic techno para brillar en la oscuridad sin pedir permiso: ideal para bailar con brujas en el boulevard mientras olvidás todo lo que te dolía.',
+    description: 'Melodic techno para brillar en la oscuridad sin pedir permiso: ideal para cuando el cuerpo pide pista y el alma se enciende como bola de espejos.',
   },
   {
     id: 'm178',
@@ -1495,8 +1491,74 @@ export const PODCASTS: Podcast[] = [
   },
 ];
 
-// INSTRUCCIÓN: Añade aquí las URLs de tus "muletillas" o "audio stingers".
-// Estos audios cortos sonarán aleatoriamente sobre la música.
+// New Video Podcasts section
+export const VIDEO_PODCASTS: VideoPodcast[] = [
+  {
+    id: 'vp1',
+    title: 'Nuestra Relación con el Miedo',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756788879/el_miedo_como_se%C3%B1al_de_vida_yob06x.png',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756788223/Nuestra_relaci%C3%B3n_con_el_miedo_mp4_qpekkp.mp4',
+    transcript: 'El miedo, esa sombra que nos sigue, que nos define. ¿Es un ancla o una brújula? A menudo lo vemos como un enemigo a vencer, una debilidad a ocultar. Pero, ¿y si fuera un lenguaje? El lenguaje primordial de la vida misma, una señal de que estamos al borde de algo nuevo, de algo que importa...'
+  },
+  {
+    id: 'vp2',
+    title: 'La Paradoja de Sísifo',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756788879/de_dios_del_alma_y_de_s%C3%ADsifo_o9z5vr.png',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756788223/La_paradoja_de_S%C3%ADsifo_mp4_kkmzqh.mp4',
+    transcript: 'Hablemos de Sísifo. Condenado a empujar una roca eternamente. Un símbolo del absurdo, de la lucha sin sentido. Pero Camus nos invita a imaginar a un Sísifo feliz. Feliz no por la meta, que es inalcanzable, sino por la lucha misma. En el esfuerzo, en la tensión del músculo, en la roca que se domina por un instante... ahí reside una forma extraña de libertad. Quizás nuestra existencia es eso: encontrar la dignidad en el esfuerzo, sin esperar una cima definitiva.'
+  },
+  {
+    id: 'vp3',
+    title: '¿Vale la pena la felicidad?',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1755904538/musica_propia_zadotn.png',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756716939/vale_la_pena_la_felicidad_lryhcf.mp4',
+    transcript: 'Este episodio del podcast "El Nexo Digital" profundiza en una crítica a la concepción contemporánea de la felicidad, presentándola no como un estado natural, sino como un constructo de la sociedad de consumo. El locutor argumenta que la felicidad se ha mercantilizado, siendo promovida a través de la publicidad y las redes sociales como un producto que se puede adquirir, generando una búsqueda incesante y, a menudo, frustrante. Además, se introduce la idea de que las emociones negativas son una parte inevitable y necesaria de la vida, y que el intento de suprimirlas puede ser contraproducente.'
+  },
+  {
+    id: 'vp4',
+    title: 'El pecado de ser positivo.',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1755904538/musica_propia_zadotn.png',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756716797/pecado_de_positivo_enqsru.mp4',
+    transcript: 'Este pódcast explora la dualidad entre el optimismo inspirador y el pragmatismo necesario para alcanzar metas. A través de la definición de "mantra" y la presentación de la canción "What\'s Up?", se introduce la idea de la lucha interna y la búsqueda de sentido. El locutor se dirige a los "soñadores de vocación", aquellos que se aferran a la positividad y a la autoayuda, presentándoles con un toque de ironía libros de éxito personal como "El Alquimista". Sin embargo, el núcleo del mensaje es un llamado a la acción: la fe y los sueños son valiosos, pero inútiles sin el trabajo duro y el "sentido común". El pódcast concluye con una fusión musical que simboliza la unión de lo antiguo y lo moderno, sugiriendo que la verdadera sabiduría reside en equilibrar la inspiración con la ejecución.'
+  },
+  {
+    id: 'vp5',
+    title: 'El colectivo, virus de la mediocridad',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1755904538/musica_propia_zadotn.png',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756714528/el_colectivo_h0vlp5.mp4',
+    transcript: 'Este podcast es una crítica contundente al conformismo social y a la pérdida de la individualidad en la era moderna, un fenómeno que el locutor denomina "el virus de la mediocridad encubierta". Se argumenta que la sociedad, especialmente a través de las redes sociales, nos presiona para encajar en un molde colectivo, donde la validación externa (como los "me gusta") reemplaza la autenticidad. Basándose en el experimento de conformidad de Asch, el podcast sostiene que nuestro miedo a la soledad y al rechazo nos lleva a sacrificar el pensamiento crítico y la creatividad individual. El colectivo, lejos de ser un refugio, se convierte en un "campo de concentración intelectual" que disfraza la mediocridad de unidad. El mensaje final es un llamado a la rebelión del pensamiento individual: a romper las cadenas del conformismo y a abrazar la diferencia como la verdadera esencia de la humanidad y la libertad.'
+  },
+  {
+    id: 'vp6',
+    title: 'El sesgo cognitivo en los sueños',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756774912/pexels-nahlamahgoub-12567771_fndbwz.jpg',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756716775/sesgo_cognitivo_en_los_suenos_tuyj6e.mp4',
+    transcript: 'Se introduce el concepto de "inercia cognitiva" y "sesgo de confirmación" para explicar por qué seguimos estos caminos preestablecidos sin cuestionarlos. El episodio propone un cambio de enfoque: en lugar de buscar la realización en lo material y externo, sugiere una introspección para descubrir una meta espiritual y auténtica. Esta búsqueda interna se presenta como un camino hacia una existencia más sabia y humana, un proceso de despojarse de lo superfluo para encontrar la "esencia" de uno mismo.'
+  },
+  {
+    id: 'vp7',
+    title: 'Persistencia',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756774912/pexels-nahlamahgoub-12567771_fndbwz.jpg',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756714508/persistencia_xdkmtb.mp4',
+    transcript: 'Este podcast es una meditación poética sobre la naturaleza cruda de la persistencia. Despoja al acto de "seguir adelante" del glamour de la motivación o la inspiración, presentándolo como un instinto fundamental de resistencia, casi mecánico. El locutor explora la idea de que la vida es una búsqueda constante, a menudo sin un objetivo claro, donde el valor no reside en el logro final, sino en el simple acto de continuar a pesar del cansancio, el miedo y la duda. La persistencia se redefine como una forma de fe secular, un "como si" que nos mantiene en movimiento para evitar el "silencio total" de la rendición.'
+  },
+  {
+    id: 'vp8',
+    title: 'Persigue tus sueños!!',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1755904538/musica_propia_zadotn.png',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756716712/persigue_tus_suenos_zvkqiv.mp4',
+    transcript: 'Este episodio del podcast "El Nexo Digital" se sumerge en una reflexión crítica sobre el concepto de "perseguir los sueños" en la sociedad contemporánea. El locutor argumenta que la presión social y la cultura de la inmediatez a menudo nos llevan a adoptar metas que no son auténticas, lo que puede conducir a la insatisfacción a largo plazo. A través de un análisis que combina la psicología y la sociología, el podcast explora la tensión entre los deseos individuales y las expectativas externas, sugiriendo que la verdadera realización personal se encuentra en un camino de introspección y en la definición de un propósito genuino, más allá de los "espejismos" que nos presenta el mundo moderno.'
+  },
+  {
+    id: 'vp9',
+    title: 'Simplificar.. es INVOLUTIVO',
+    coverUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756774912/pexels-nahlamahgoub-12567771_fndbwz.jpg',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756715180/040225_simplificar_es_involutivo_j81nvg.mp4',
+    transcript: 'El podcast presenta una crítica a la simplificación del lenguaje en la era digital, argumentando que la inmediatez y la "cultura de la reacción" están erosionando la reflexión crítica y la profundidad comunicativa. Citando a sociólogos como Evgeny Morozov y Manuel Castells, el locutor describe una involución donde abreviaciones y emojis reemplazan pensamientos complejos. Luego, el episodio transita hacia el análisis de la canción "Jungle" de Tash Sultana, presentándola como una metáfora de la exploración de la "jungla interna", un espacio de superación personal, libertad y lucha contra los miedos propios.'
+  }
+];
+
+// Audio stingers have been updated with the user's provided list.
 export const AUDIO_STINGERS: string[] = [
   'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595448/16_zdos44.mp3',
   'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595446/15_k7vkvj.mp3',
@@ -1563,7 +1625,7 @@ const generatePopupSchedule = (): PopupContent[] => {
       type: 'static',
       title: "Mensaje de Audio",
       text: "Una reflexión para terminar el día. Sube el volumen y escucha este mensaje especial.",
-      audioUrl: "https://res.cloudinary.com/dgvkbrgre/video/upload/v1756197258/eclecticos_nicole_lbmh1d.mp3",
+      audioUrl: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/3_sxj48g.mp3',
       imageUrl: "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     }
   );

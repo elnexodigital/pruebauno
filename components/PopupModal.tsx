@@ -82,7 +82,11 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
             utterance.voice = voiceToUse;
             utterance.onend = playOutroAndClose;
             utterance.onerror = (event) => {
-                console.error('SpeechSynthesis Utterance Error:', event.error);
+                // The 'interrupted' error is expected when the user manually closes the modal.
+                // We can ignore it to avoid cluttering the console with non-critical errors.
+                if (event.error !== 'interrupted') {
+                  console.error('SpeechSynthesis Utterance Error:', event.error);
+                }
             };
             window.speechSynthesis.speak(utterance);
         } else {
@@ -174,7 +178,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
               <div className="flex items-center gap-4">
                 <div>
                   <h2 className="font-brittany text-4xl text-gray-900">El Nexo Digital</h2>
-                  <p className="text-sm text-gray-600 mt-1">una forma diferente de saber la noticia</p>
+                  <p className="text-sm text-gray-600 mt-1">Una forma diferente de saber la noticia</p>
                 </div>
               </div>
             </>
