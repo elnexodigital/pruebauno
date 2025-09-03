@@ -80,9 +80,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
 
     const playNextChunk = () => {
       if (isCancelledRef.current || currentAudioIndexRef.current >= audioQueueRef.current.length) {
-        if (content.type === 'news') {
-          onClose();
-        }
+        // When TTS ends, simply stop. Do not auto-close the modal.
         return;
       }
       
@@ -129,9 +127,8 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
           return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=es&client=tw-ob`;
         });
         playNextChunk();
-      } else {
-        onClose();
       }
+      // If there's no text to speak, do nothing. The modal will stay open for the user to read.
     } else if (content.audioUrl) {
       audioQueueRef.current = [content.audioUrl];
       playNextChunk();
@@ -151,7 +148,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
       }
     };
 
-  }, [content, isNewsLoaded, onClose]);
+  }, [content, isNewsLoaded]);
 
   const handleModalClose = () => {
     onClose();

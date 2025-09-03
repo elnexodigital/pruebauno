@@ -3,15 +3,15 @@ import CloseIcon from './icons/CloseIcon';
 
 interface WelcomeConfirmationModalProps {
   onClose: () => void;
-  onInstall: () => void;
+  onInstall: () => Promise<void>;
   installPromptEvent: any | null;
 }
 
 const WelcomeConfirmationModal: React.FC<WelcomeConfirmationModalProps> = ({ onClose, onInstall, installPromptEvent }) => {
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (installPromptEvent) {
-      onInstall();
+      await onInstall();
     }
     onClose();
   };
