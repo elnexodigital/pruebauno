@@ -17,6 +17,7 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 import OwnerControls from './components/OwnerControls';
 import ConfigModal from './components/ConfigModal';
 import WelcomeConfirmationModal from './components/WelcomeConfirmationModal';
+import InstallPwaButton from './components/InstallPwaButton';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -48,7 +49,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 
   try {
     const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-    const prompt = `Genera un resumen de las 4 noticias más importantes y recientes a nivel mundial y de Uruguay para hoy, ${today}. Asegúrate de que la información sea lo más actualizada posible. Para cada una, da un titular conciso y un resumen de no más de 30 palabras. Usa este formato exacto para cada noticia, separándolas con un doble salto de línea:\nTITULAR: [el titular]\nRESUMEN: [el resumen]`;
+    const prompt = `Genera un resumen de las 4 noticias más urgentes y de última hora a nivel mundial y de Uruguay para hoy, ${today}. Asegúrate de que la información sea lo más actualizada posible, idealmente de los últimos minutos u horas. Para cada una, da un titular conciso y un resumen de no más de 30 palabras. Usa este formato exacto para cada noticia, separándolas con un doble salto de línea:\nTITULAR: [el titular]\nRESUMEN: [el resumen]`;
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -102,7 +103,7 @@ const fetchWeather = async (): Promise<WeatherInfo | null> => {
     return null;
   }
   try {
-    const prompt = "Cuál es el pronóstico del tiempo más reciente y preciso para Juan Lacaze, Colonia, Uruguay? Dame la temperatura actual en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.";
+    const prompt = "Cuál es el pronóstico del tiempo ahora mismo para Juan Lacaze, Colonia, Uruguay? Dame la temperatura actual en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.";
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -748,15 +749,18 @@ export default function App(): React.ReactNode {
         )}
       </div>
       
-      {isOwner && (
-        <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
+        {isOwner && (
             <OwnerControls 
                 onShowPopup={() => handleShowPopup()} 
                 onShowConfig={() => setShowConfigModal(true)}
                 onTestVideoPodcast={handleTestVideoPodcast}
             />
-        </div>
-      )}
+        )}
+        {installPromptEvent && (
+            <InstallPwaButton onClick={handleInstallApp} />
+        )}
+      </div>
 
       <div className="absolute bottom-4 right-4 z-20">
         <button
@@ -808,8 +812,6 @@ export default function App(): React.ReactNode {
       {showWelcomeModal && (
         <WelcomeConfirmationModal 
             onClose={() => setShowWelcomeModal(false)}
-            onInstall={handleInstallApp}
-            installPromptEvent={installPromptEvent}
         />
       )}
     </main>

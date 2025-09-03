@@ -9,7 +9,7 @@ interface OwnerControlsProps {
 
 const OwnerControls: React.FC<OwnerControlsProps> = ({ onShowPopup, onShowConfig, onTestVideoPodcast }) => {
   return (
-    <div className="flex items-center space-x-2">
+    <>
       <button
         onClick={onTestVideoPodcast}
         className="px-4 py-2 bg-purple-600/50 backdrop-blur-md text-white font-semibold text-sm rounded-full hover:bg-purple-600/70 transition-colors duration-300 shadow-lg"
@@ -30,7 +30,7 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ onShowPopup, onShowConfig
         <SettingsIcon />
         <span>Config</span>
       </button>
-    </div>
+    </>
   );
 };
 

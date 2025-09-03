@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-nexo-digital-cache-v2'; // Version bumped to ensure SW update
+const CACHE_NAME = 'el-nexo-digital-cache-v3'; // Version bumped to ensure SW update and clear stale data
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
