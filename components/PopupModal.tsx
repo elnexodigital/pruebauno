@@ -27,6 +27,7 @@ const GeminiIcon: React.FC = () => (
 
 const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<string[]>([]);
   const currentAudioIndexRef = useRef(0);
   const isCancelledRef = useRef(false);
@@ -35,7 +36,6 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
   
   // This effect will manage the entire audio lifecycle for the modal
   useEffect(() => {
-    // Reset state on content change
     isCancelledRef.current = false;
     currentAudioIndexRef.current = 0;
     audioQueueRef.current = [];
@@ -48,17 +48,46 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
       return;
     }
 
-    // A single audio player instance
     const audioPlayer = new Audio();
+    audioPlayer.crossOrigin = "anonymous";
     audioPlayerRef.current = audioPlayer;
+
+    try {
+      if (!audioContextRef.current) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+          audioContextRef.current = new AudioContext();
+        }
+      }
+      
+      const context = audioContextRef.current;
+      if (context) {
+        const source = context.createMediaElementSource(audioPlayer);
+        const compressor = context.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-30, context.currentTime);
+        compressor.knee.setValueAtTime(30, context.currentTime);
+        compressor.ratio.setValueAtTime(12, context.currentTime);
+        compressor.attack.setValueAtTime(0, context.currentTime);
+        compressor.release.setValueAtTime(0.25, context.currentTime);
+        const gainNode = context.createGain();
+        gainNode.gain.value = 4.0; // Significant boost for TTS clarity
+        source.connect(gainNode).connect(compressor).connect(context.destination);
+      }
+    } catch (e) {
+      console.error("Failed to setup Web Audio for popup, using default playback.", e);
+      audioContextRef.current = null; // Disable context on error
+    }
 
     const playNextChunk = () => {
       if (isCancelledRef.current || currentAudioIndexRef.current >= audioQueueRef.current.length) {
-        // If it was news, automatically close when done.
         if (content.type === 'news') {
           onClose();
         }
         return;
+      }
+      
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
       }
       
       const nextSrc = audioQueueRef.current[currentAudioIndexRef.current];
@@ -67,13 +96,11 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
       audioPlayer.src = nextSrc;
       audioPlayer.play().catch(error => {
         console.error(`Playback initiation failed for ${nextSrc}:`, error);
-        // On play error, try next chunk after a short delay
         setTimeout(playNextChunk, 250);
       });
     };
 
     const handleEnded = () => {
-      // Add a small delay between chunks to avoid rate-limiting
       setTimeout(playNextChunk, 500);
     };
 
@@ -85,14 +112,12 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
           message: error?.message,
           src: src
       });
-      // Skip to the next chunk on error after a short delay
       setTimeout(playNextChunk, 250);
     };
 
     audioPlayer.addEventListener('ended', handleEnded);
     audioPlayer.addEventListener('error', handleError);
 
-    // Populate the audio queue
     if (isNewsLoaded) {
       const textsToSpeak = (content.text as NewsItem[])
         .flatMap(item => [item.headline, item.summary])
@@ -103,17 +128,15 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
           const encodedText = encodeURIComponent(text.substring(0, 200));
           return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=es&client=tw-ob`;
         });
-        playNextChunk(); // Start playback for news
+        playNextChunk();
       } else {
-        // If there's no text but it's a news modal, just close it.
         onClose();
       }
     } else if (content.audioUrl) {
       audioQueueRef.current = [content.audioUrl];
-      playNextChunk(); // Start playback for static audio
+      playNextChunk();
     }
 
-    // Cleanup function
     return () => {
       isCancelledRef.current = true;
       if (audioPlayer) {
@@ -122,12 +145,15 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
         audioPlayer.removeEventListener('ended', handleEnded);
         audioPlayer.removeEventListener('error', handleError);
       }
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(e => console.error("Error closing popup audio context", e));
+        audioContextRef.current = null;
+      }
     };
 
   }, [content, isNewsLoaded, onClose]);
 
   const handleModalClose = () => {
-    // Cleanup is handled by the useEffect return function when the component unmounts
     onClose();
   };
 
@@ -195,8 +221,8 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
         <div className="flex-grow overflow-y-auto px-6 md:px-8 py-4">
           {Array.isArray(content.text) ? (
             <div className="space-y-4">
-              {content.text.map((item, index) => (
-                <div key={index}>
+              {content.text.map((item) => (
+                <div key={item.headline}>
                   <h3 className="font-bold text-lg text-gray-800 mb-1">{item.headline}</h3>
                   <p className="text-sm text-gray-600">{item.summary}</p>
                 </div>

@@ -26,7 +26,7 @@ export const GREETING_AUDIOS = {
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265299/28_mcuvlw.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265300/29_juasvn.mp3',
   ],
-  night: [ // 10 saludos de 18:01 a 22:00 
+  night: [ // 9 saludos de 18:01 a 22:00 
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265336/30_rpschd.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265337/31_qybjne.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265339/33_j0xym3.mp3',
@@ -81,10 +81,8 @@ export const VIDEO_URLS: string[] = [
   'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344292/spot_10_segundos_completo_bkagma.mp4',
   'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344282/spot10segundos_completo_rku0iy.mp4',
   'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344274/spot_10_segundos_completo_fzdqlg.mp4',
-  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344274/spot_10_segundos_completo_fzdqlg.mp4',
   'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344264/spot_10_segundos_completo_kmryb2.mp4',
   'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756344252/spot_10_segundos_yirf7x.mp4',
-  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1755907719/animaci%C3%B3n_APP_pvxjop.mp4',
 ].filter((url, index, self) => self.indexOf(url) === index); // Remove duplicates
 
 
@@ -119,11 +117,6 @@ export const MUSIC_TRACKS: MusicTrack[] = [
     id: 'm12',
     url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154358/playlist_1_wpldia.mp3',
     description: 'De todo: playlist marciana',
-  },
-  {
-    id: 'm13',
-    url:'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756154359/Whiskey_Blues_Best_of_Slow_BluesRock_1_nvnw0f.mp3',
-    description: 'Whiskey Blues: guitarras lentas, humo denso y la noche que nunca cierra.',
   },
   {
     id: 'm14',
@@ -466,11 +459,6 @@ export const MUSIC_TRACKS: MusicTrack[] = [
     description: 'rap de insomnio para despertar gigantes.',
   },
   {
-    id: 'm83',
-    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425683/WOS_MORFEO_igo5zh.mp3',
-    description: 'Rabia hecha canción para escupir la espina.',
-  },
-  {
     id: 'm84',
     url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425680/TROTSKY_VENGARAN_Mas_alla_o_mas_aca_f0a2ie.mp3',
     description: 'Cumbia punk para bailar en el velorio de tus miedos.',
@@ -533,7 +521,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   {
     id: 'm96',
     url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425661/Trotsky_Vengaran_UN_BESO_Y_UNA_FLOR_usxjur.mp3',
-    description: 'Cumbia romántica para besar sin manual de instrucciones.v',
+    description: 'Cumbia romántica para besar sin manual de instrucciones.',
   },
   {
     id: 'm97',
@@ -921,19 +909,9 @@ export const MUSIC_TRACKS: MusicTrack[] = [
     description: 'Soul noir para vengarse con elegancia: ideal para brindar con champán sobre los restos del ego ajeno.',
   },
   {
-    id: 'm176',
-    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425523/Kovacs_My_Love_jof2cl.mp3',
-    description: 'Funk psicodélico para flotar sobre concreto caliente: ideal para cuando la ciudad respira jazz y vos te dejás mezclar sin preguntar.',
-  },
-  {
     id: 'm177',
     url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425519/Korolova_Shining_edmmil.mp3',
     description: 'Melodic techno para brillar en la oscuridad sin pedir permiso: ideal para cuando el cuerpo pide pista y el alma se enciende como bola de espejos.',
-  },
-  {
-    id: 'm178',
-    url: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756425519/Korolova_Shining_edmmil.mp3',
-    description: 'Melodic techno para brillar en la oscuridad sin pedir permiso: ideal para bailar con brujas en el boulevard mientras olvidás todo lo que te dolía.',
   },
   {
     id: 'm179',

@@ -3,9 +3,18 @@ import CloseIcon from './icons/CloseIcon';
 
 interface WelcomeConfirmationModalProps {
   onClose: () => void;
+  onInstall: () => void;
+  installPromptEvent: any | null;
 }
 
-const WelcomeConfirmationModal: React.FC<WelcomeConfirmationModalProps> = ({ onClose }) => {
+const WelcomeConfirmationModal: React.FC<WelcomeConfirmationModalProps> = ({ onClose, onInstall, installPromptEvent }) => {
+
+  const handleConfirm = () => {
+    if (installPromptEvent) {
+      onInstall();
+    }
+    onClose();
+  };
 
   return (
     <div 
@@ -31,7 +40,7 @@ const WelcomeConfirmationModal: React.FC<WelcomeConfirmationModalProps> = ({ onC
         </div>
         <div className="px-6 pb-6">
             <button
-              onClick={onClose}
+              onClick={handleConfirm}
               className="w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
             >
               Me Sumo

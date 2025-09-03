@@ -2,7 +2,8 @@
 // The code now safely accesses `import.meta.env` via a type cast.
 
 // FIX: Corrected the invalid React import and added missing hook imports (useState, useEffect, etc.) to resolve 'Cannot find name' errors.
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+// FIX: Corrected the React import to include missing hooks (useState, useEffect, useRef, useCallback, useMemo).
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS, NEWS_INTRO_URL, CHARACTER_IMAGES } from './constants';
@@ -17,7 +18,6 @@ import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource,
 import OwnerControls from './components/OwnerControls';
 import ConfigModal from './components/ConfigModal';
 import WelcomeConfirmationModal from './components/WelcomeConfirmationModal';
-import InstallPwaButton from './components/InstallPwaButton';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -158,8 +158,8 @@ export default function App(): React.ReactNode {
   const isMainPlayerActive = activePlayer === 'main';
   
   const stingerTimeoutRef = useRef<number | null>(null);
-  const stingerAudioContextRef = useRef<AudioContext | null>(null);
-  const greetingAudioContextRef = useRef<AudioContext | null>(null);
+  const masterAudioContextRef = useRef<AudioContext | null>(null);
+  const masterAudioDestinationRef = useRef<AudioNode | null>(null);
   
   const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
     // If an immersive video is playing, don't shuffle anything new.
@@ -287,72 +287,70 @@ export default function App(): React.ReactNode {
 
     const playStingerAndScheduleNext = () => {
       const randomStingerUrl = getRandomItem(AUDIO_STINGERS);
+      stingerAudio = new Audio(randomStingerUrl);
+      stingerAudio.crossOrigin = "anonymous"; // Required for Web Audio API
+
+      const onStingerEnd = () => {
+        setMainPlayerVolume(1.0); // Restore main audio volume
+        if (stingerAudio) {
+          stingerAudio.removeEventListener('ended', onStingerEnd);
+          stingerAudio.removeEventListener('error', onStingerError);
+        }
+        scheduleTimeout();
+      };
+
+      const onStingerError = (e: ErrorEvent | string) => {
+        console.error("Audio stinger playback error:", e);
+        setMainPlayerVolume(1.0); // Restore volume on error too
+        if (stingerAudio) {
+          stingerAudio.removeEventListener('ended', onStingerEnd);
+          stingerAudio.removeEventListener('error', onStingerError);
+        }
+        scheduleTimeout();
+      };
+
+      stingerAudio.addEventListener('ended', onStingerEnd);
+      stingerAudio.addEventListener('error', onStingerError);
+      
+      setMainPlayerVolume(0.1); // Duck main audio. Master compressor will help balance.
+
+      // Use Master Web Audio Context to boost volume and improve quality
       try {
-        stingerAudio = new Audio(randomStingerUrl);
-        stingerAudio.crossOrigin = "anonymous"; // Required for Web Audio API
-
-        const onStingerEnd = () => {
-          setMainPlayerVolume(1.0); // Restore main audio volume
-          if (stingerAudio) {
-            stingerAudio.removeEventListener('ended', onStingerEnd);
-            stingerAudio.removeEventListener('error', onStingerError);
-          }
-          scheduleTimeout();
-        };
-
-        const onStingerError = (e: ErrorEvent | string) => {
-          console.error("Audio stinger playback error:", e);
-          setMainPlayerVolume(1.0); // Restore volume on error too
-          if (stingerAudio) {
-            stingerAudio.removeEventListener('ended', onStingerEnd);
-            stingerAudio.removeEventListener('error', onStingerError);
-          }
-          scheduleTimeout();
-        };
-
-        stingerAudio.addEventListener('ended', onStingerEnd);
-        stingerAudio.addEventListener('error', onStingerError);
+        const context = masterAudioContextRef.current;
+        const destination = masterAudioDestinationRef.current;
         
-        setMainPlayerVolume(0.1); // Duck main audio to make the stinger stand out.
-
-        // Use Web Audio API to boost volume beyond 1.0
-        try {
-          if (!stingerAudioContextRef.current) {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioContext) {
-              stingerAudioContextRef.current = new AudioContext();
-            }
+        if (context && destination && stingerAudio) {
+          if (context.state === 'suspended') {
+            context.resume();
           }
 
-          if (stingerAudioContextRef.current && stingerAudioContextRef.current.state === 'suspended') {
-            stingerAudioContextRef.current.resume();
-          }
+          const source = context.createMediaElementSource(stingerAudio);
+          
+          const compressor = context.createDynamicsCompressor();
+          compressor.threshold.setValueAtTime(-40, context.currentTime);
+          compressor.knee.setValueAtTime(30, context.currentTime);
+          compressor.ratio.setValueAtTime(12, context.currentTime);
+          compressor.attack.setValueAtTime(0, context.currentTime);
+          compressor.release.setValueAtTime(0.25, context.currentTime);
+          
+          const gainNode = context.createGain();
+          gainNode.gain.value = 3.5; // 350% volume boost for presence
 
-          if (stingerAudioContextRef.current) {
-            const context = stingerAudioContextRef.current;
-            const source = context.createMediaElementSource(stingerAudio);
-            const gainNode = context.createGain();
-            gainNode.gain.value = 2.5; // 150% volume boost
-            source.connect(gainNode).connect(context.destination);
-          } else {
-            // Fallback for browsers without Web Audio API
-            stingerAudio.volume = 1.0;
-          }
-        } catch (webAudioError) {
-          console.error("Web Audio API for stinger failed, using standard volume.", webAudioError);
+          // Chain: source -> gain -> compressor -> master chain destination
+          source.connect(gainNode).connect(compressor).connect(destination);
+        } else {
+          // Fallback for browsers without Web Audio API
           stingerAudio.volume = 1.0;
         }
-
-
-        stingerAudio.play().catch(error => {
-          console.error("Audio stinger playback failed:", error);
-          onStingerError(error.toString());
-        });
-
-      } catch (error) {
-        console.error("Error creating audio stinger:", error);
-        scheduleTimeout(); // Try to schedule next one anyway
+      } catch (webAudioError) {
+        console.error("Web Audio API for stinger failed, using standard volume.", webAudioError);
+        stingerAudio.volume = 1.0;
       }
+
+      stingerAudio.play().catch(error => {
+        console.error("Audio stinger playback failed:", error);
+        onStingerError(error.toString());
+      });
     };
     
     // Conditions to run the stinger logic
@@ -368,19 +366,16 @@ export default function App(): React.ReactNode {
       if (stingerTimeoutRef.current) {
         clearTimeout(stingerTimeoutRef.current);
       }
-      // Stop any stinger that might be playing
       if (stingerAudio) {
         stingerAudio.pause();
         stingerAudio.src = '';
       }
-      // Always restore volume on cleanup
       setMainPlayerVolume(1.0);
     };
     
   }, [isMainPlayerActive, mainPlayerItem]);
 
   const handleShowPopup = useCallback(async (content?: PopupContent) => {
-    // If a popup is already active, don't show another one.
     if (activePopup) return;
 
     let finalContent: PopupContent | null = content || null;
@@ -404,15 +399,12 @@ export default function App(): React.ReactNode {
       }
     }
 
-    // Set the initial state (e.g., loading state)
     setActivePopup(finalContent);
 
-    // If it's a news popup, fetch fresh content
     if (finalContent.type === 'news') {
         const [newsContent, weatherContent] = await Promise.all([fetchNews(), fetchWeather()]);
         
         if (newsContent) {
-            // Update the existing popup content without losing videoUrl
             setActivePopup(prev => prev ? {
                 ...prev,
                 title: newsContent.title,
@@ -429,7 +421,6 @@ export default function App(): React.ReactNode {
         }
     }
     
-    // Pause main player if needed
     if (finalContent.audioUrl || finalContent.videoUrl || finalContent.type === 'news') {
       if (activePlayer) {
         setPlayerToResume(activePlayer);
@@ -438,7 +429,6 @@ export default function App(): React.ReactNode {
     }
   }, [activePlayer, activePopup, settings.playNewsAlert]);
 
-  // Effect for scheduled popups
   useEffect(() => {
     if (!isStarted) return;
 
@@ -456,7 +446,6 @@ export default function App(): React.ReactNode {
 
     const intervalId = setInterval(checkTime, 30000); // Check every 30 seconds
 
-    // Reset shown popups at midnight
     const now = new Date();
     const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5, 0).getTime() - now.getTime();
     const midnightTimer = setTimeout(() => {
@@ -498,82 +487,80 @@ export default function App(): React.ReactNode {
       return;
     }
     installPromptEvent.prompt();
-    // The userChoice property returns a Promise that resolves to an object with an outcome property.
     const { outcome } = await installPromptEvent.userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
-    // We've used the prompt, and it can't be used again, so clear it.
     setInstallPromptEvent(null);
+  };
+
+  const initAudioContext = () => {
+    if (masterAudioContextRef.current) return;
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) {
+        console.warn("Web Audio API is not supported.");
+        return;
+      }
+      const context = new AudioContext();
+
+      const masterCompressor = context.createDynamicsCompressor();
+      masterCompressor.threshold.setValueAtTime(-20, context.currentTime);
+      masterCompressor.knee.setValueAtTime(30, context.currentTime);
+      masterCompressor.ratio.setValueAtTime(12, context.currentTime);
+      masterCompressor.attack.setValueAtTime(0.003, context.currentTime);
+      masterCompressor.release.setValueAtTime(0.25, context.currentTime);
+
+      const masterGain = context.createGain();
+      masterGain.gain.setValueAtTime(1.1, context.currentTime); // 10% overall boost
+
+      masterCompressor.connect(masterGain).connect(context.destination);
+
+      masterAudioContextRef.current = context;
+      masterAudioDestinationRef.current = masterCompressor; // Other nodes connect here
+    } catch (e) {
+      console.error("Failed to create Master AudioContext.", e);
+    }
   };
 
   const handleStart = () => {
     setIsStarted(true);
-    
-    // Always show the welcome modal after the user starts.
     setShowWelcomeModal(true);
     
-    // Initialize and resume the audio context on user interaction to allow autoplay.
-    if (!greetingAudioContextRef.current) {
-        try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioContext) {
-                greetingAudioContextRef.current = new AudioContext();
-            }
-        } catch (e) {
-            console.error("Failed to create AudioContext for greetings.", e);
-        }
-    }
-    if (greetingAudioContextRef.current && greetingAudioContextRef.current.state === 'suspended') {
-        greetingAudioContextRef.current.resume();
+    initAudioContext();
+    if (masterAudioContextRef.current && masterAudioContextRef.current.state === 'suspended') {
+      masterAudioContextRef.current.resume();
     }
 
-
-    // Play greeting audio after a small delay to not overlap with modals
     setTimeout(() => {
       let greetingUrls: string[] = [];
       switch (timeOfDay) {
-        case TimeOfDay.Morning:
-          greetingUrls = GREETING_AUDIOS.morning;
-          break;
-        case TimeOfDay.Afternoon:
-          greetingUrls = GREETING_AUDIOS.afternoon;
-          break;
-        case TimeOfDay.Night:
-          greetingUrls = GREETING_AUDIOS.night;
-          break;
-        case TimeOfDay.Noctambulo:
-          greetingUrls = GREETING_AUDIOS.noctambulo;
-          break;
+        case TimeOfDay.Morning: greetingUrls = GREETING_AUDIOS.morning; break;
+        case TimeOfDay.Afternoon: greetingUrls = GREETING_AUDIOS.afternoon; break;
+        case TimeOfDay.Night: greetingUrls = GREETING_AUDIOS.night; break;
+        case TimeOfDay.Noctambulo: greetingUrls = GREETING_AUDIOS.noctambulo; break;
       }
       
       if (greetingUrls.length > 0) {
         const randomGreetingUrl = getRandomItem(greetingUrls);
         try {
-           const audioContext = greetingAudioContextRef.current;
-           // Use Web Audio API if available, as it's more robust for this use case.
-           if (audioContext) {
+           const audioContext = masterAudioContextRef.current;
+           const destination = masterAudioDestinationRef.current;
+           if (audioContext && destination) {
              fetch(randomGreetingUrl)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     return response.arrayBuffer();
                 })
                 .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
                 .then(audioBuffer => {
                     const source = audioContext.createBufferSource();
                     source.buffer = audioBuffer;
-                    source.connect(audioContext.destination);
+                    source.connect(destination); // Connect to master chain
                     source.start();
                 })
-                .catch(error => {
-                    console.error("Greeting audio playback failed via Web Audio API:", error);
-                });
+                .catch(error => console.error("Greeting audio playback failed via Web Audio API:", error));
            } else {
-             // Fallback for older browsers
              const greetingAudio = new Audio(randomGreetingUrl);
-             greetingAudio.play().catch(error => {
-                console.error("Greeting audio autoplay failed (fallback):", error);
-             });
+             greetingAudio.play().catch(error => console.error("Greeting audio autoplay failed (fallback):", error));
            }
         } catch (error) {
           console.error("Error creating or playing greeting audio:", error);
@@ -582,7 +569,7 @@ export default function App(): React.ReactNode {
     }, 500);
   };
   
-    const handleChangeUser = () => {
+  const handleChangeUser = () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setUserInfo(null);
     setIsOwner(false);
@@ -647,7 +634,6 @@ export default function App(): React.ReactNode {
 
   const handleImmersiveVideoEnded = useCallback(() => {
     setImmersiveVideoPodcast(null);
-    // Use a timeout to allow for the exit animation/transition before starting next media
     setTimeout(() => {
       shuffleMedia({ forceMusic: true });
     }, 300);
@@ -656,7 +642,7 @@ export default function App(): React.ReactNode {
   const handleTestVideoPodcast = () => {
     if (VIDEO_PODCASTS.length > 0) {
       const randomVP = getRandomItem(VIDEO_PODCASTS);
-      setActivePlayer(null); // Stop any other audio
+      setActivePlayer(null);
       setImmersiveVideoPodcast(randomVP);
     }
   };
@@ -728,7 +714,6 @@ export default function App(): React.ReactNode {
     >
       <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
 
-      {/* Character Image */}
       <div className="absolute left-0 top-0 h-full w-auto z-0 pointer-events-none">
         <img
           key={timeOfDay}
@@ -750,7 +735,6 @@ export default function App(): React.ReactNode {
           </p>
       </div>
 
-      {/* Top-centered player and vibe button */}
       <div className="flex justify-center items-start gap-4 md:gap-8 z-10 pt-4 md:pt-8">
           {mainPlayerItem && (
           <CircularPlayer
@@ -764,7 +748,6 @@ export default function App(): React.ReactNode {
               aria-label="Cambiar la onda"
               className="relative w-28 h-28 md:w-36 md:h-36 group focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 rounded-full"
           >
-              {/* SVG for curved text */}
               <svg
                   viewBox="0 0 100 100"
                   className="w-full h-full absolute top-0 left-0 transition-transform duration-700 ease-in-out group-hover:rotate-180"
@@ -785,7 +768,6 @@ export default function App(): React.ReactNode {
                   </text>
               </svg>
 
-              {/* The image in the center */}
               <img
                   src="https://res.cloudinary.com/ddmj6zevz/image/upload/v1756851098/Generated_Image_September_02__2025_-_1_54PM-removebg-preview_fpoafd.png"
                   alt="Un martillo y cincel de piedra descansan sobre un montón de rocas."
@@ -794,9 +776,7 @@ export default function App(): React.ReactNode {
           </button>
       </div>
 
-      {/* Bottom content area */}
       <div className="flex flex-col items-center gap-4 px-4 z-10 pb-4 md:pb-8">
-          {/* Typewriter text */}
           <div className="w-full max-w-3xl text-center pointer-events-none">
               {mainPlayerItem?.type === 'music' && mainPlayerItem.description && (
               <TypewriterText
@@ -806,7 +786,6 @@ export default function App(): React.ReactNode {
               )}
           </div>
 
-          {/* Video player */}
           <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black opacity-70">
               <VideoPlayer 
                   videoUrl={currentVideoUrl} 
@@ -825,6 +804,8 @@ export default function App(): React.ReactNode {
           onEnded={handleAudioEnded}
           onError={handleAudioError}
           volume={audioPlayerVolume}
+          audioContext={masterAudioContextRef.current}
+          audioDestination={masterAudioDestinationRef.current}
         />
       )}
       
@@ -835,9 +816,6 @@ export default function App(): React.ReactNode {
                 onShowConfig={() => setShowConfigModal(true)}
                 onTestVideoPodcast={handleTestVideoPodcast}
             />
-        )}
-        {installPromptEvent && (
-            <InstallPwaButton onClick={handleInstallApp} />
         )}
       </div>
 
@@ -857,6 +835,8 @@ export default function App(): React.ReactNode {
       {showWelcomeModal && (
         <WelcomeConfirmationModal 
             onClose={() => setShowWelcomeModal(false)}
+            onInstall={handleInstallApp}
+            installPromptEvent={installPromptEvent}
         />
       )}
     </main>

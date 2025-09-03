@@ -5,11 +5,12 @@ interface AudioPlayerProps {
   onEnded?: () => void;
   onError?: () => void;
   volume?: number;
+  audioContext: AudioContext | null;
+  audioDestination: AudioNode | null;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, onError, volume = 1.0 }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, onError, volume = 1.0, audioContext, audioDestination }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -29,60 +30,31 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, onError, vo
 
   useEffect(() => {
     const audioEl = audioRef.current;
-    
-    // Cleanup previous animation frame loop
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+    if (!audioEl || !audioContext || !audioDestination) return;
+
+    // Setup the Web Audio graph only once
+    if (!sourceNodeRef.current) {
+      try {
+        const source = audioContext.createMediaElementSource(audioEl);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        
+        // Connect source -> analyser -> master chain destination
+        source.connect(analyser).connect(audioDestination);
+        
+        sourceNodeRef.current = source;
+        analyserRef.current = analyser;
+      } catch (e) {
+        console.error("Error setting up Web Audio graph.", e);
+        return; // Stop if graph setup fails
+      }
     }
-
-    if (!audioEl || !videoId || !videoId.startsWith('http')) {
-      return;
-    }
-
-    const setupWebAudio = () => {
-      if (!audioContextRef.current) {
-        try {
-          const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-          if (!AudioContext) {
-            console.warn("Web Audio API is not supported in this browser.");
-            return;
-          }
-          audioContextRef.current = new AudioContext();
-        } catch (e) {
-          console.error("Failed to create AudioContext.", e);
-          return;
-        }
-      }
-
-      const audioContext = audioContextRef.current;
-      if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
-      
-      if (!sourceNodeRef.current) {
-        try {
-          sourceNodeRef.current = audioContext.createMediaElementSource(audioEl);
-          const analyser = audioContext.createAnalyser();
-          analyser.fftSize = 256;
-          analyserRef.current = analyser;
-
-          sourceNodeRef.current.connect(analyser);
-          analyser.connect(audioContext.destination);
-        } catch (e) {
-          console.error("Error setting up Web Audio graph.", e);
-          // Reset refs on failure
-          audioContextRef.current = null;
-          sourceNodeRef.current = null;
-          analyserRef.current = null;
-          return;
-        }
-      }
-      
-      startSilenceDetection();
-    };
 
     const startSilenceDetection = () => {
+      // Cleanup previous animation frame loop
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       if (!analyserRef.current) return;
       
       const analyser = analyserRef.current;
@@ -126,17 +98,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ videoId, onEnded, onError, vo
       check();
     };
 
-    // Attempt to set up Web Audio after the element is ready to play.
-    audioEl.addEventListener('canplay', setupWebAudio, { once: true });
+    // Start silence detection when the component is ready
+    startSilenceDetection();
     
     return () => {
-      audioEl.removeEventListener('canplay', setupWebAudio);
+      // Clean up the animation frame on unmount
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
       }
     };
-  }, [videoId]);
+  }, [audioContext, audioDestination]);
 
 
   if (!videoId) return null;
