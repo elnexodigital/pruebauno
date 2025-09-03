@@ -21,7 +21,7 @@ export const GREETING_AUDIOS = {
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265294/23_ahmio9.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265294/24_sdjmui.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265295/25_piazi2.mp3',
-    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265296/hpvyxo.mp3',
+    'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265296/26_hpvyxo.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265298/27_guvt3f.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265299/28_mcuvlw.mp3',
     'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756265300/29_juasvn.mp3',
@@ -1543,79 +1543,41 @@ export const VIDEO_PODCASTS: VideoPodcast[] = [
   }
 ];
 
-// Audio stingers have been updated with the user's provided list.
+// Audio stingers/jingles to play between music tracks.
+// INSTRUCTION: Replace these with your own audio jingles from Cloudinary.
 export const AUDIO_STINGERS: string[] = [
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595448/16_zdos44.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595446/15_k7vkvj.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595446/14_l416pu.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595445/13_deaxsh.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595445/12_i4nikk.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595445/8_igjm87.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595445/7_syaunh.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595445/10_gu8r0y.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595445/11_js74po.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/3_sxj48g.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/5_rgarth.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/4_secta1.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/6_aodzxg.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/1_ebuxxi.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/2_m5meaa.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756596319/6_vgib96.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756596319/5_adspov.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756596318/1_nghc1y.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756596318/3_m4xv5e.mp3',
-  'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756596318/2_f8szz9.mp3',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756917133/entrada_noticias_u6m45n.mp3',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756917371/muletilla_2_v7vjlg.mp3',
+  'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756917370/muletilla_1_vzkvyh.mp3',
 ];
 
-const generatePopupSchedule = (): PopupContent[] => {
-  const schedule: PopupContent[] = [];
-  const newsPopupBase: Omit<PopupContent, 'time'> = {
-    type: 'news',
-    title: "Vienen las Noticias",
-    text: "Un momento por favor...",
-    videoUrl: "https://res.cloudinary.com/ddmj6zevz/video/upload/v1756612883/Vienen_las_Noticias_ujmv2i.mp4",
-    videoAspectRatio: '1080/330',
-  };
-
-  // Morning schedule: 7 AM to 12 PM, every 30 minutes
-  for (let hour = 7; hour < 12; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-        const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        schedule.push({ ...newsPopupBase, time });
-    }
-  }
-
-  // Afternoon schedule: 12 PM to 5 PM, every 90 minutes
-  let afternoonTime = new Date();
-  afternoonTime.setHours(12, 0, 0, 0);
-  while(afternoonTime.getHours() < 17) {
-    const time = `${String(afternoonTime.getHours()).padStart(2, '0')}:${String(afternoonTime.getMinutes()).padStart(2, '0')}`;
-    if (!schedule.some(p => p.time === time)) {
-        schedule.push({ ...newsPopupBase, time });
-    }
-    afternoonTime.setMinutes(afternoonTime.getMinutes() + 90);
-  }
-  
-    // Add static popups
-  schedule.push(
-    {
-      time: "16:30", // This might overlap with a news popup, but we'll add it. The check logic will show the first match for the minute.
-      type: 'static',
-      title: "Prueba de Video con Audio",
-      text: "Este es el popup para que pruebes tu video. La radio debería pausarse cuando aparece y reanudarse cuando lo cierras.",
-      videoUrl: "https://res.cloudinary.com/ddmj6zevz/video/upload/v1756355792/NOTICIAS_he4dnu.mp4", 
-    },
-    {
-      time: "21:15",
-      type: 'static',
-      title: "Mensaje de Audio",
-      text: "Una reflexión para terminar el día. Sube el volumen y escucha este mensaje especial.",
-      audioUrl: 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/3_sxj48g.mp3',
-      imageUrl: "https://images.pexels.com/photos/3768894/pexels-photo-3768894.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    }
-  );
-
-  return schedule.sort((a, b) => a.time.localeCompare(b.time));
-};
-
-export const POPUP_SCHEDULE: PopupContent[] = generatePopupSchedule();
+// Schedule for popups. Times are in "HH:MM" format.
+export const POPUP_SCHEDULE: PopupContent[] = [
+  // Morning News
+  { time: '07:30', type: 'news', title: '', text: '' },
+  { time: '08:30', type: 'news', title: '', text: '' },
+  { time: '09:30', type: 'news', title: '', text: '' },
+  { time: '10:30', type: 'news', title: '', text: '' },
+  { time: '11:30', type: 'news', title: '', text: '' },
+  // Afternoon News
+  { time: '12:00', type: 'news', title: '', text: '' },
+  { time: '13:30', type: 'news', title: '', text: '' },
+  { time: '15:00', type: 'news', title: '', text: '' },
+  { time: '16:30', type: 'news', title: '', text: '' },
+  // Static Popups
+  { 
+    time: '17:00',
+    type: 'static',
+    title: 'Aviso con Video',
+    text: 'Este es un aviso con un video de prueba.',
+    videoUrl: 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756345001/1_ndgmbp.mp4'
+  },
+  { 
+    time: '21:15',
+    type: 'static',
+    title: 'Mensaje de Audio',
+    text: 'Este es un mensaje de prueba con audio e imagen.',
+    imageUrl: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756588189/pexels-life-of-pix-8892_ymfsnd.jpg',
+    audioUrl: 'https://res.cloudinary.com/demo/video/upload/success_1.mp3',
+  },
+];

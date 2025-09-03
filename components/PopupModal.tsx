@@ -6,6 +6,8 @@ import WeatherIcon from './WeatherIcon';
 interface PopupModalProps {
   content: PopupContent | null;
   onClose: () => void;
+  audioContext: AudioContext | null;
+  audioDestination: AudioNode | null;
 }
 
 const GeminiIcon: React.FC = () => (
@@ -25,9 +27,9 @@ const GeminiIcon: React.FC = () => (
 );
 
 
-const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
+const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination }) => {
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const audioQueueRef = useRef<string[]>([]);
   const currentAudioIndexRef = useRef(0);
   const isCancelledRef = useRef(false);
@@ -39,9 +41,16 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
     isCancelledRef.current = false;
     currentAudioIndexRef.current = 0;
     audioQueueRef.current = [];
+
+    // Cleanup previous audio element if it exists
     if (audioPlayerRef.current) {
       audioPlayerRef.current.pause();
       audioPlayerRef.current = null;
+    }
+    // Disconnect previous source node
+    if(sourceNodeRef.current) {
+        sourceNodeRef.current.disconnect();
+        sourceNodeRef.current = null;
     }
 
     if (!content) {
@@ -52,40 +61,13 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
     audioPlayer.crossOrigin = "anonymous";
     audioPlayerRef.current = audioPlayer;
 
-    try {
-      if (!audioContextRef.current) {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContext) {
-          audioContextRef.current = new AudioContext();
-        }
-      }
-      
-      const context = audioContextRef.current;
-      if (context) {
-        const source = context.createMediaElementSource(audioPlayer);
-        const compressor = context.createDynamicsCompressor();
-        compressor.threshold.setValueAtTime(-30, context.currentTime);
-        compressor.knee.setValueAtTime(30, context.currentTime);
-        compressor.ratio.setValueAtTime(12, context.currentTime);
-        compressor.attack.setValueAtTime(0, context.currentTime);
-        compressor.release.setValueAtTime(0.25, context.currentTime);
-        const gainNode = context.createGain();
-        gainNode.gain.value = 4.0; // Significant boost for TTS clarity
-        source.connect(gainNode).connect(compressor).connect(context.destination);
-      }
-    } catch (e) {
-      console.error("Failed to setup Web Audio for popup, using default playback.", e);
-      audioContextRef.current = null; // Disable context on error
-    }
-
     const playNextChunk = () => {
       if (isCancelledRef.current || currentAudioIndexRef.current >= audioQueueRef.current.length) {
-        // When TTS ends, simply stop. Do not auto-close the modal.
         return;
       }
       
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
       }
       
       const nextSrc = audioQueueRef.current[currentAudioIndexRef.current];
@@ -115,6 +97,29 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
 
     audioPlayer.addEventListener('ended', handleEnded);
     audioPlayer.addEventListener('error', handleError);
+    
+    // Connect to the master audio context passed from App.tsx
+    try {
+      if (audioContext && audioDestination && !sourceNodeRef.current) {
+        const source = audioContext.createMediaElementSource(audioPlayer);
+        sourceNodeRef.current = source;
+        
+        const compressor = audioContext.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-30, audioContext.currentTime);
+        compressor.knee.setValueAtTime(30, audioContext.currentTime);
+        compressor.ratio.setValueAtTime(12, audioContext.currentTime);
+        compressor.attack.setValueAtTime(0, audioContext.currentTime);
+        compressor.release.setValueAtTime(0.25, audioContext.currentTime);
+        
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 4.0; // Significant boost for TTS clarity
+
+        // Connect source -> gain -> compressor -> master destination
+        source.connect(gainNode).connect(compressor).connect(audioDestination);
+      }
+    } catch (e) {
+      console.error("Failed to setup Web Audio for popup.", e);
+    }
 
     if (isNewsLoaded) {
       const textsToSpeak = (content.text as NewsItem[])
@@ -128,7 +133,6 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
         });
         playNextChunk();
       }
-      // If there's no text to speak, do nothing. The modal will stay open for the user to read.
     } else if (content.audioUrl) {
       audioQueueRef.current = [content.audioUrl];
       playNextChunk();
@@ -142,13 +146,13 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
         audioPlayer.removeEventListener('ended', handleEnded);
         audioPlayer.removeEventListener('error', handleError);
       }
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().catch(e => console.error("Error closing popup audio context", e));
-        audioContextRef.current = null;
+      if(sourceNodeRef.current){
+        sourceNodeRef.current.disconnect();
+        sourceNodeRef.current = null;
       }
     };
 
-  }, [content, isNewsLoaded]);
+  }, [content, isNewsLoaded, audioContext, audioDestination]);
 
   const handleModalClose = () => {
     onClose();

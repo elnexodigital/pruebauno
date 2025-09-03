@@ -819,7 +819,12 @@ export default function App(): React.ReactNode {
         )}
       </div>
 
-      <PopupModal content={activePopup} onClose={handleClosePopup} />
+      <PopupModal 
+        content={activePopup} 
+        onClose={handleClosePopup}
+        audioContext={masterAudioContextRef.current}
+        audioDestination={masterAudioDestinationRef.current}
+      />
       
       {showConfigModal && (
           <ConfigModal 
