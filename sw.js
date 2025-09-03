@@ -1,8 +1,7 @@
-const CACHE_NAME = 'el-nexo-digital-cache-v1';
+const CACHE_NAME = 'el-nexo-digital-cache-v2'; // Version bumped to ensure SW update
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  '/index.tsx',
   '/manifest.webmanifest'
 ];
 
@@ -17,15 +16,50 @@ self.addEventListener('install', event => {
   );
 });
 
-// Serve cached content when offline
+// Clean up old caches on activation
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
+
+
+// Serve cached content when offline, but ensure API calls always go to the network
 self.addEventListener('fetch', event => {
+  // Use a network-first strategy for API calls to ensure fresh data.
+  if (event.request.url.includes('googleapis.com')) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        // On failure, respond with a generic error.
+        // The app itself should handle this error gracefully.
+        return new Response(JSON.stringify({ error: "API call failed, possibly offline" }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 503
+        });
+      })
+    );
+    return;
+  }
+
+  // For all other requests, use a cache-first strategy.
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Cache hit - return response
+        // Cache hit - return response.
         if (response) {
           return response;
         }
+        // Not in cache - fetch from network.
         return fetch(event.request);
       }
     )

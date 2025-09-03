@@ -47,9 +47,12 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
   }
 
   try {
+    const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    const prompt = `Genera un resumen de las 4 noticias más importantes y recientes a nivel mundial y de Uruguay para hoy, ${today}. Asegúrate de que la información sea lo más actualizada posible. Para cada una, da un titular conciso y un resumen de no más de 30 palabras. Usa este formato exacto para cada noticia, separándolas con un doble salto de línea:\nTITULAR: [el titular]\nRESUMEN: [el resumen]`;
+    
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: 'Genera un resumen de 4 noticias relevantes y recientes. Incluye una noticia internacional, una de Uruguay, una de deportes y una de arte o cultura. Para cada una, da un titular conciso y un resumen de no más de 25 palabras. Usa este formato exacto para cada noticia, separándolas con un doble salto de línea:\nTITULAR: [el titular]\nRESUMEN: [el resumen]',
+      contents: prompt,
       config: {
         tools: [{googleSearch: {}}],
       },
@@ -99,9 +102,10 @@ const fetchWeather = async (): Promise<WeatherInfo | null> => {
     return null;
   }
   try {
+    const prompt = "Cuál es el pronóstico del tiempo más reciente y preciso para Juan Lacaze, Colonia, Uruguay? Dame la temperatura actual en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.";
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: "Cuál es el clima actual en Juan Lacaze, Colonia, Uruguay? Dame la temperatura en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.",
+      contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -145,7 +149,6 @@ export default function App(): React.ReactNode {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
-  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   const isPlaying = activePlayer !== null;
@@ -239,27 +242,23 @@ export default function App(): React.ReactNode {
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setInstallPromptEvent(e);
+      // Only show the prompt if the app is not already installed
+       if (!window.matchMedia('(display-mode: standalone)').matches && !(window.navigator as any).standalone) {
+         setInstallPromptEvent(e);
+       }
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, []);
-
-  // Effect to check if the PWA is already installed
-  useEffect(() => {
-    const checkInstalled = () => {
-      if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
-        setIsPwaInstalled(true);
-        setInstallPromptEvent(null);
-      }
-    };
-    checkInstalled();
+    
     const handleAppInstalled = () => {
-      setIsPwaInstalled(true);
+      // Clear the prompt event once the app is installed
       setInstallPromptEvent(null);
     };
     window.addEventListener('appinstalled', handleAppInstalled);
-    return () => window.removeEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
 
@@ -374,86 +373,76 @@ export default function App(): React.ReactNode {
   }, [isMainPlayerActive, mainPlayerItem]);
 
   const handleShowPopup = useCallback(async (content?: PopupContent) => {
-      let popupContent: PopupContent | null = content || null;
-      if (!popupContent) {
-        // This logic is for manual triggering (e.g., OwnerControls)
-        const placeholder: PopupContent = {
-            type: 'news',
-            time: '',
+    // If a popup is already active, don't show another one.
+    if (activePopup) return;
+
+    let finalContent: PopupContent | null = content || null;
+
+    if (!finalContent) { // Manual trigger for news
+        finalContent = {
+            type: 'news', time: '',
             title: "Generando Noticias...",
             text: "Un momento por favor, estamos conectando con el nexo para traerte las últimas novedades.",
+            videoUrl: "https://res.cloudinary.com/ddmj6zevz/video/upload/v1756612883/Vienen_las_Noticias_ujmv2i.mp4",
+            videoAspectRatio: '1080/330',
         };
-        setActivePopup(placeholder);
+    }
+
+    // Set the initial state (e.g., loading state)
+    setActivePopup(finalContent);
+
+    // If it's a news popup, fetch fresh content
+    if (finalContent.type === 'news') {
+        const [newsContent, weatherContent] = await Promise.all([fetchNews(), fetchWeather()]);
         
-        const [newsContent, weatherContent] = await Promise.all([
-          fetchNews(),
-          fetchWeather()
-        ]);
-
         if (newsContent) {
-           popupContent = { ...placeholder, ...newsContent, weather: weatherContent ?? undefined };
+            // Update the existing popup content without losing videoUrl
+            setActivePopup(prev => prev ? {
+                ...prev,
+                title: newsContent.title,
+                text: newsContent.text,
+                sources: newsContent.sources,
+                weather: weatherContent ?? undefined,
+            } : null);
         } else {
-           popupContent = { 
-               ...placeholder, 
-               title: 'Error', 
-               text: 'No se pudieron obtener las noticias.' 
-           };
+            setActivePopup(prev => prev ? {
+                ...prev,
+                title: 'Error de Conexión',
+                text: 'No se pudieron obtener las noticias. Por favor, inténtalo más tarde.'
+            } : null);
         }
     }
-
-    if (popupContent) {
-        if (popupContent.audioUrl || popupContent.videoUrl || popupContent.type === 'news') {
-          if (activePlayer) {
-            setPlayerToResume(activePlayer);
-            setActivePlayer(null);
-          }
-        }
-        setActivePopup(popupContent);
+    
+    // Pause main player if needed
+    if (finalContent.audioUrl || finalContent.videoUrl || finalContent.type === 'news') {
+      if (activePlayer) {
+        setPlayerToResume(activePlayer);
+        setActivePlayer(null);
+      }
     }
-  }, [activePlayer]);
+  }, [activePlayer, activePopup]);
 
   // Effect for scheduled popups
   useEffect(() => {
     if (!isStarted) return;
 
-    const checkTime = async () => {
+    const checkTime = () => {
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       
       const scheduledPopup = POPUP_SCHEDULE.find(p => p.time === currentTime);
 
       if (scheduledPopup && !shownPopups.includes(scheduledPopup.time)) {
-        if (scheduledPopup.type === 'news') {
-           handleShowPopup({
-              ...scheduledPopup,
-              title: "Generando Noticias...",
-              text: "Un momento por favor, estamos conectando con el nexo para traerte las últimas novedades.",
-          });
-          
-          const [newsContent, weatherContent] = await Promise.all([
-            fetchNews(),
-            fetchWeather()
-          ]);
-
-          if (newsContent) {
-            handleShowPopup({
-              ...scheduledPopup,
-              ...newsContent,
-              weather: weatherContent ?? undefined,
-            });
-          }
-        } else {
           handleShowPopup(scheduledPopup);
-        }
-        setShownPopups(prev => [...prev, scheduledPopup.time]);
+          setShownPopups(prev => [...prev, scheduledPopup.time]);
       }
     };
 
-    const intervalId = setInterval(checkTime, 60000); // Check every minute
+    const intervalId = setInterval(checkTime, 30000); // Check every 30 seconds
 
-    // Reset shown popups at midnight for subsequent days
+    // Reset shown popups at midnight
     const now = new Date();
-    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0).getTime() - now.getTime();
+    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5, 0).getTime() - now.getTime();
     const midnightTimer = setTimeout(() => {
         setShownPopups([]);
     }, msUntilMidnight);
@@ -485,20 +474,15 @@ export default function App(): React.ReactNode {
       return;
     }
     installPromptEvent.prompt();
-    // Wait for the user to respond to the prompt.
-    // The `userChoice` property returns a Promise that resolves to an object with an `outcome` property.
-    await installPromptEvent.userChoice;
+    // The userChoice property returns a Promise that resolves to an object with an outcome property.
+    const { outcome } = await installPromptEvent.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
     // We've used the prompt, and it can't be used again, so clear it.
     setInstallPromptEvent(null);
   };
 
-  const handleStart = async () => {
+  const handleStart = () => {
     setIsStarted(true);
-
-    // This is a one-time check. If the prompt is available and the app isn't installed, we use it.
-    if (installPromptEvent && !isPwaInstalled) {
-      await handleInstallApp();
-    }
     
     // Always show the welcome modal after the user starts.
     setShowWelcomeModal(true);
@@ -539,6 +523,8 @@ export default function App(): React.ReactNode {
     const handleChangeUser = () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setUserInfo(null);
+    setIsOwner(false);
+    setIsStarted(false);
   };
   
   const timeGreeting = useMemo(() => {
@@ -820,7 +806,11 @@ export default function App(): React.ReactNode {
       )}
 
       {showWelcomeModal && (
-        <WelcomeConfirmationModal onClose={() => setShowWelcomeModal(false)} />
+        <WelcomeConfirmationModal 
+            onClose={() => setShowWelcomeModal(false)}
+            onInstall={handleInstallApp}
+            installPromptEvent={installPromptEvent}
+        />
       )}
     </main>
   );

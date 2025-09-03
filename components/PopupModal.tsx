@@ -28,123 +28,113 @@ const GeminiIcon: React.FC = () => (
 
 
 const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const outroHasPlayed = useRef(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const audioStateRef = useRef<'intro' | 'tts' | 'outro' | 'idle'>('idle');
   const [errorNoVoice, setErrorNoVoice] = useState<string | null>(null);
-  const autoCloseTimer = useRef<number | null>(null);
 
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
 
-  // Effect for automatic TTS playback and auto-closing
   useEffect(() => {
-    // Clear any previous timers or error messages when content changes
-    setErrorNoVoice(null);
-    if (autoCloseTimer.current) {
-        clearTimeout(autoCloseTimer.current);
-        autoCloseTimer.current = null;
+    if (!content) return;
+
+    let introAudio: HTMLAudioElement | null = null;
+    let genericAudio: HTMLAudioElement | null = null;
+
+    const cleanup = () => {
+        window.speechSynthesis.cancel();
+        if (introAudio) {
+            introAudio.pause();
+            introAudio.onended = null;
+            introAudio.onerror = null;
+            introAudio.src = '';
+        }
+        if (genericAudio) {
+            genericAudio.pause();
+            genericAudio.src = '';
+        }
+        audioStateRef.current = 'idle';
+        window.speechSynthesis.onvoiceschanged = null;
+    };
+
+    if (isNewsLoaded) {
+        const playOutroAndClose = () => {
+            if (audioStateRef.current === 'outro') return;
+            audioStateRef.current = 'outro';
+
+            const outroAudio = new Audio(NEWS_OUTRO_URL);
+            outroAudio.onended = onClose;
+            outroAudio.onerror = onClose; // Close even if outro fails
+            outroAudio.play().catch(onClose);
+        };
+
+        const startSpeech = () => {
+            if (audioStateRef.current !== 'intro') return; // Ensure it follows the intro
+            audioStateRef.current = 'tts';
+
+            const textToSpeak = (content.text as NewsItem[])
+                .map(item => `${item.headline}. ${item.summary}`)
+                .join('. ');
+
+            if (!textToSpeak) {
+                playOutroAndClose();
+                return;
+            }
+
+            const voices = window.speechSynthesis.getVoices();
+            const voiceToUse = voices.find(v => v.lang.startsWith('es') && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('es'));
+
+            if (voiceToUse) {
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.lang = 'es-UY';
+                utterance.voice = voiceToUse;
+                utterance.onend = playOutroAndClose;
+                utterance.onerror = (e) => {
+                    if (e.error !== 'interrupted') playOutroAndClose();
+                };
+                window.speechSynthesis.speak(utterance);
+            } else {
+                setErrorNoVoice("No encontré una voz en español en tu dispositivo para leer las noticias.");
+                setTimeout(playOutroAndClose, 8000); // Wait and close
+            }
+        };
+
+        const handleSpeechInit = () => {
+            if (window.speechSynthesis.getVoices().length > 0) {
+                startSpeech();
+            } else {
+                window.speechSynthesis.onvoiceschanged = startSpeech;
+            }
+        };
+
+        audioStateRef.current = 'intro';
+        introAudio = new Audio(NEWS_INTRO_URL);
+        introAudio.onended = handleSpeechInit;
+        introAudio.onerror = handleSpeechInit; // Try to speak even if intro fails
+        introAudio.play().catch(handleSpeechInit);
+
+    } else if (content.audioUrl) {
+        genericAudio = new Audio(content.audioUrl);
+        genericAudio.play().catch(e => console.error("Popup audio playback failed:", e));
     }
 
-    if (!isNewsLoaded) return;
-
-    // Reset state for this instance of the popup
-    outroHasPlayed.current = false;
-    let hasSpoken = false;
-
-    const playOutroAndClose = () => {
-      if (outroHasPlayed.current) return;
-      outroHasPlayed.current = true;
-      const outroAudio = new Audio(NEWS_OUTRO_URL);
-      outroAudio.onended = onClose; 
-      outroAudio.play().catch(e => {
-        console.error("Outro audio playback failed, closing modal directly.", e);
-        onClose(); 
-      });
-    };
-
-    const startSpeech = () => {
-        if (!content || hasSpoken) return;
-
-        const textToSpeak = (content.text as NewsItem[])
-          .map(item => `${item.headline}. ${item.summary}`)
-          .join('\n\n');
-        
-        if (!textToSpeak) return;
-
-        const voices = window.speechSynthesis.getVoices();
-        const googleVoice = voices.find(v => v.lang.startsWith('es') && v.name.includes('Google'));
-        const anySpanishVoice = voices.find(v => v.lang.startsWith('es'));
-        const voiceToUse = googleVoice || anySpanishVoice;
-
-        if (voiceToUse) {
-            hasSpoken = true;
-            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.lang = 'es-UY';
-            utterance.voice = voiceToUse;
-            utterance.onend = playOutroAndClose;
-            utterance.onerror = (event) => {
-                // The 'interrupted' error is expected when the user manually closes the modal.
-                // We can ignore it to avoid cluttering the console with non-critical errors.
-                if (event.error !== 'interrupted') {
-                  console.error('SpeechSynthesis Utterance Error:', event.error);
-                }
-            };
-            window.speechSynthesis.speak(utterance);
-        } else {
-            console.warn("No suitable Spanish TTS voice found.");
-            setErrorNoVoice("No encontré una voz en español instalada en tu dispositivo, por lo que no puedo leer las noticias.");
-            // Set a timer to auto-close the modal after 10 seconds
-            autoCloseTimer.current = window.setTimeout(() => {
-                onClose();
-            }, 10000);
-        }
-    };
-    
-    const introAudio = new Audio(NEWS_INTRO_URL);
-    introAudio.play().catch(e => console.error("Intro audio playback failed", e));
-
-    const speechDelay = setTimeout(() => {
-        if (window.speechSynthesis.getVoices().length === 0) {
-          window.speechSynthesis.onvoiceschanged = startSpeech;
-        } else {
-          startSpeech();
-        }
-    }, 1500);
-
-    return () => {
-      clearTimeout(speechDelay);
-      if (autoCloseTimer.current) {
-        clearTimeout(autoCloseTimer.current);
-      }
-      window.speechSynthesis.onvoiceschanged = null;
-      window.speechSynthesis.cancel();
-    };
+    return cleanup;
 
   }, [isNewsLoaded, content, onClose]);
 
-  // Effect for generic popup audio (non-news)
-  useEffect(() => {
-    if (content?.audioUrl) {
-      const audio = new Audio(content.audioUrl);
-      audioRef.current = audio;
-      audio.play().catch(e => console.error("Popup audio playback failed:", e));
-    }
-
-    return () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
-    };
-  }, [content?.audioUrl]);
-  
   const handleModalClose = () => {
-    window.speechSynthesis?.cancel();
-    
-    if (isNewsLoaded && !outroHasPlayed.current) {
-        outroHasPlayed.current = true;
+    if (isClosing) return;
+
+    window.speechSynthesis.cancel();
+
+    if (content?.type === 'news') {
+        setIsClosing(true);
         const outroAudio = new Audio(NEWS_OUTRO_URL);
-        outroAudio.play().catch(e => console.error("Outro on manual close failed", e));
+        outroAudio.onended = onClose;
+        outroAudio.onerror = onClose;
+        outroAudio.play().catch(onClose);
+    } else {
+        onClose();
     }
-    
-    onClose();
   };
 
   if (!content) return null;
