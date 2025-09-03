@@ -1,4 +1,4 @@
-import { Podcast, MusicTrack, PopupContent, VideoPodcast } from "./types";
+import { Podcast, MusicTrack, PopupContent, VideoPodcast, TimeOfDay } from "./types";
 
 // INSTRUCCIÓN: Sube tus audios de saludo a Cloudinary y reemplaza estas URLs.
 export const GREETING_AUDIOS = {
@@ -42,12 +42,19 @@ export const GREETING_AUDIOS = {
   ],
 };
 
+// Character images for different times of day
+export const CHARACTER_IMAGES = {
+  [TimeOfDay.Morning]: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Grace-removebg-preview_julviv.png', // Graciela
+  [TimeOfDay.Afternoon]: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Sergio-removebg-preview_wl4ewa.png', // Sergio
+  [TimeOfDay.Night]: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Gabriel-removebg-preview_u7x1rs.png', // Gabriel
+  [TimeOfDay.Noctambulo]: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Gabriel-removebg-preview_u7x1rs.png', // Gabriel
+};
+
 // A single, static background image for the entire application.
 export const STATIC_BACKGROUND_URL = 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756588189/pexels-life-of-pix-8892_ymfsnd.jpg';
 
-// Sound effects for news popups
-export const NEWS_INTRO_URL = 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/1_ebuxxi.mp3';
-export const NEWS_OUTRO_URL = 'https://res.cloudinary.com/dgvkbrgre/video/upload/v1756595444/2_m5meaa.mp3';
+// Sound effect for news popups
+export const NEWS_INTRO_URL = 'https://res.cloudinary.com/ddmj6zevz/video/upload/v1756917133/entrada_noticias_u6m45n.mp3';
 
 // A curated list of Cloudinary video URLs for the visual player.
 // These are separate from the background videos.

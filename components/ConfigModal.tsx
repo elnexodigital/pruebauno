@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { UserInfo } from '../types';
+import { UserInfo, AppSettings } from '../types';
 import CloseIcon from './icons/CloseIcon';
 
 interface ConfigModalProps {
@@ -9,6 +9,8 @@ interface ConfigModalProps {
   timeGreeting: string;
   // FIX: The `ai` prop can be null if the API key is not available.
   ai: GoogleGenAI | null;
+  settings: AppSettings;
+  onSettingsChange: (newSettings: Partial<AppSettings>) => void;
 }
 
 type ApiStatus = 'idle' | 'checking' | 'success' | 'error';
@@ -47,7 +49,7 @@ const StatusIndicator: React.FC<{ status: ApiStatus }> = ({ status }) => {
   return null;
 };
 
-const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeting, ai }) => {
+const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeting, ai, settings, onSettingsChange }) => {
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiStatus>('idle');
 
   useEffect(() => {
@@ -108,6 +110,29 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                 {apiKeyStatus === 'error' && (
                   <p className="text-xs text-gray-500 mt-1">La clave de API (VITE_API_KEY) no se encontró o no es válida. Las funciones de IA están desactivadas.</p>
                 )}
+            </div>
+            <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-500 mb-2">Notificaciones Sonoras</h3>
+                <div className="flex items-center justify-between">
+                    <label htmlFor="news-alert-toggle" className="text-gray-800 text-sm cursor-pointer">
+                        Sonido de alerta para noticias
+                    </label>
+                    <button
+                        id="news-alert-toggle"
+                        role="switch"
+                        aria-checked={settings.playNewsAlert}
+                        onClick={() => onSettingsChange({ playNewsAlert: !settings.playNewsAlert })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
+                            settings.playNewsAlert ? 'bg-indigo-600' : 'bg-gray-200'
+                        }`}
+                    >
+                        <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                settings.playNewsAlert ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                        />
+                    </button>
+                </div>
             </div>
         </div>
 

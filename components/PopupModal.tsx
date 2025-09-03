@@ -1,8 +1,6 @@
-// Fix: Completed the file which was truncated, causing a missing export error.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import CloseIcon from './icons/CloseIcon';
 import { PopupContent, NewsItem } from '../types';
-import { NEWS_INTRO_URL, NEWS_OUTRO_URL } from '../constants';
 import WeatherIcon from './WeatherIcon';
 
 interface PopupModalProps {
@@ -14,7 +12,7 @@ const GeminiIcon: React.FC = () => (
     <svg
         width="24"
         height="24"
-        viewBox="0 0 24 24"
+        viewBox="0 0 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-full"
@@ -28,114 +26,111 @@ const GeminiIcon: React.FC = () => (
 
 
 const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
-  const [isClosing, setIsClosing] = useState(false);
-  const audioStateRef = useRef<'intro' | 'tts' | 'outro' | 'idle'>('idle');
-  const [errorNoVoice, setErrorNoVoice] = useState<string | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const currentAudioIndexRef = useRef(0);
+  const isCancelledRef = useRef(false);
 
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
-
+  
+  // This effect will manage the entire audio lifecycle for the modal
   useEffect(() => {
-    if (!content) return;
+    // Reset state on content change
+    isCancelledRef.current = false;
+    currentAudioIndexRef.current = 0;
+    audioQueueRef.current = [];
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+    }
 
-    let introAudio: HTMLAudioElement | null = null;
-    let genericAudio: HTMLAudioElement | null = null;
+    if (!content) {
+      return;
+    }
 
-    const cleanup = () => {
-        window.speechSynthesis.cancel();
-        if (introAudio) {
-            introAudio.pause();
-            introAudio.onended = null;
-            introAudio.onerror = null;
-            introAudio.src = '';
+    // A single audio player instance
+    const audioPlayer = new Audio();
+    audioPlayerRef.current = audioPlayer;
+
+    const playNextChunk = () => {
+      if (isCancelledRef.current || currentAudioIndexRef.current >= audioQueueRef.current.length) {
+        // If it was news, automatically close when done.
+        if (content.type === 'news') {
+          onClose();
         }
-        if (genericAudio) {
-            genericAudio.pause();
-            genericAudio.src = '';
-        }
-        audioStateRef.current = 'idle';
-        window.speechSynthesis.onvoiceschanged = null;
+        return;
+      }
+      
+      const nextSrc = audioQueueRef.current[currentAudioIndexRef.current];
+      currentAudioIndexRef.current++;
+
+      audioPlayer.src = nextSrc;
+      audioPlayer.play().catch(error => {
+        console.error(`Playback initiation failed for ${nextSrc}:`, error);
+        // On play error, try next chunk after a short delay
+        setTimeout(playNextChunk, 250);
+      });
     };
 
+    const handleEnded = () => {
+      // Add a small delay between chunks to avoid rate-limiting
+      setTimeout(playNextChunk, 500);
+    };
+
+    const handleError = () => {
+      const error = audioPlayer.error;
+      const src = audioPlayer.currentSrc;
+      console.error(`TTS Audio Error on segment ${currentAudioIndexRef.current - 1}:`, {
+          code: error?.code,
+          message: error?.message,
+          src: src
+      });
+      // Skip to the next chunk on error after a short delay
+      setTimeout(playNextChunk, 250);
+    };
+
+    audioPlayer.addEventListener('ended', handleEnded);
+    audioPlayer.addEventListener('error', handleError);
+
+    // Populate the audio queue
     if (isNewsLoaded) {
-        const playOutroAndClose = () => {
-            if (audioStateRef.current === 'outro') return;
-            audioStateRef.current = 'outro';
+      const textsToSpeak = (content.text as NewsItem[])
+        .flatMap(item => [item.headline, item.summary])
+        .filter(text => text && text.trim() !== '');
 
-            const outroAudio = new Audio(NEWS_OUTRO_URL);
-            outroAudio.onended = onClose;
-            outroAudio.onerror = onClose; // Close even if outro fails
-            outroAudio.play().catch(onClose);
-        };
-
-        const startSpeech = () => {
-            if (audioStateRef.current !== 'intro') return; // Ensure it follows the intro
-            audioStateRef.current = 'tts';
-
-            const textToSpeak = (content.text as NewsItem[])
-                .map(item => `${item.headline}. ${item.summary}`)
-                .join('. ');
-
-            if (!textToSpeak) {
-                playOutroAndClose();
-                return;
-            }
-
-            const voices = window.speechSynthesis.getVoices();
-            const voiceToUse = voices.find(v => v.lang.startsWith('es') && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('es'));
-
-            if (voiceToUse) {
-                const utterance = new SpeechSynthesisUtterance(textToSpeak);
-                utterance.lang = 'es-UY';
-                utterance.voice = voiceToUse;
-                utterance.onend = playOutroAndClose;
-                utterance.onerror = (e) => {
-                    if (e.error !== 'interrupted') playOutroAndClose();
-                };
-                window.speechSynthesis.speak(utterance);
-            } else {
-                setErrorNoVoice("No encontré una voz en español en tu dispositivo para leer las noticias.");
-                setTimeout(playOutroAndClose, 8000); // Wait and close
-            }
-        };
-
-        const handleSpeechInit = () => {
-            if (window.speechSynthesis.getVoices().length > 0) {
-                startSpeech();
-            } else {
-                window.speechSynthesis.onvoiceschanged = startSpeech;
-            }
-        };
-
-        audioStateRef.current = 'intro';
-        introAudio = new Audio(NEWS_INTRO_URL);
-        introAudio.onended = handleSpeechInit;
-        introAudio.onerror = handleSpeechInit; // Try to speak even if intro fails
-        introAudio.play().catch(handleSpeechInit);
-
+      if (textsToSpeak.length > 0) {
+        audioQueueRef.current = textsToSpeak.map(text => {
+          const encodedText = encodeURIComponent(text.substring(0, 200));
+          return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=es&client=tw-ob`;
+        });
+        playNextChunk(); // Start playback for news
+      } else {
+        // If there's no text but it's a news modal, just close it.
+        onClose();
+      }
     } else if (content.audioUrl) {
-        genericAudio = new Audio(content.audioUrl);
-        genericAudio.play().catch(e => console.error("Popup audio playback failed:", e));
+      audioQueueRef.current = [content.audioUrl];
+      playNextChunk(); // Start playback for static audio
     }
 
-    return cleanup;
+    // Cleanup function
+    return () => {
+      isCancelledRef.current = true;
+      if (audioPlayer) {
+        audioPlayer.pause();
+        audioPlayer.src = '';
+        audioPlayer.removeEventListener('ended', handleEnded);
+        audioPlayer.removeEventListener('error', handleError);
+      }
+    };
 
-  }, [isNewsLoaded, content, onClose]);
+  }, [content, isNewsLoaded, onClose]);
 
   const handleModalClose = () => {
-    if (isClosing) return;
-
-    window.speechSynthesis.cancel();
-
-    if (content?.type === 'news') {
-        setIsClosing(true);
-        const outroAudio = new Audio(NEWS_OUTRO_URL);
-        outroAudio.onended = onClose;
-        outroAudio.onerror = onClose;
-        outroAudio.play().catch(onClose);
-    } else {
-        onClose();
-    }
+    // Cleanup is handled by the useEffect return function when the component unmounts
+    onClose();
   };
+
 
   if (!content) return null;
   
@@ -190,15 +185,14 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose }) => {
                <span className="capitalize">{content.weather.description}</span>
                <span>Viento: {content.weather.windSpeed}</span>
             </div>
+            <p className="text-xs text-gray-500 text-right mt-1">
+              {new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
+            </p>
           </div>
         )}
 
         {/* Scrollable Content Body */}
         <div className="flex-grow overflow-y-auto px-6 md:px-8 py-4">
-          {errorNoVoice && (
-            <p className="text-red-600 font-bold text-center mb-4 p-2 bg-red-100 rounded-md">{errorNoVoice}</p>
-          )}
-
           {Array.isArray(content.text) ? (
             <div className="space-y-4">
               {content.text.map((item, index) => (

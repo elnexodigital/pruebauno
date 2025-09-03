@@ -25,40 +25,59 @@ const CircularPlayer: React.FC<CircularPlayerProps> = ({ item, isPlaying, onTogg
 
   const isMusic = item.type === 'music';
   const animationClass = isAnimating ? 'animate-pulse-once' : '';
-  const spinClass = isPlaying ? 'animate-spin-slow' : '';
+  const spinClass = isPlaying && isMusic ? 'animate-spin-slow' : '';
   
   return (
     <div className={`flex flex-col items-center gap-2 transition-transform duration-500 ${animationClass}`}>
-      <div className="w-[120px] md:w-[160px] text-center mb-1">
-        <h2 className="font-display text-2xl md:text-3xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70">COMPAÑÍA</h2>
-      </div>
-      <div
-        className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] rounded-full shadow-2xl overflow-hidden group transition-all duration-500 bg-gray-900/50"
+      
+      {/* The main circular button */}
+      <button
+        onClick={onTogglePlay}
+        aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+        className="relative w-28 h-28 md:w-36 md:h-36 group focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 rounded-full"
       >
-        {isMusic ? (
-           <img
-            src={NEXO_DIGITAL_LOGO_URL}
-            alt={"El Nexo Digital Logo"}
-            className={`w-full h-full object-cover p-2 ${spinClass}`}
-           />
-        ) : (
-          <img 
-            src={item.coverUrl}
-            alt={item.title || 'Carátula'}
-            className="w-full h-full object-cover"
-          />
-        )}
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <button
-            onClick={onTogglePlay}
-            className="text-white rounded-full p-4 bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
-            aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
-          >
-            {isPlaying ? <PauseIcon /> : <PlayIcon />}
-          </button>
+        {/* SVG for curved text */}
+        <svg
+            viewBox="0 0 100 100"
+            className="w-full h-full absolute top-0 left-0 transition-transform duration-700 ease-in-out group-hover:rotate-180"
+        >
+            <defs>
+            <path
+                id="player-text-arc"
+                d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"
+            />
+            </defs>
+            <text
+                className="font-display text-[9px] md:text-[11px] text-white tracking-[0.15em] opacity-70"
+                fill="currentColor"
+            >
+            <textPath href="#player-text-arc" startOffset="75%" textAnchor="middle">
+                COMPAÑÍA
+            </textPath>
+            </text>
+        </svg>
+
+        {/* The image in the center */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-28 md:h-28 rounded-full shadow-lg border-2 border-white/20 group-hover:scale-105 transition-transform duration-300 pointer-events-none overflow-hidden">
+            <img
+                src={isMusic ? NEXO_DIGITAL_LOGO_URL : item.coverUrl}
+                alt={isMusic ? "El Nexo Digital Logo" : (item.title || 'Carátula')}
+                className={`w-full h-full object-cover ${spinClass} ${isMusic ? 'p-2' : ''}`}
+            />
         </div>
-      </div>
-      <div className="text-center w-[120px] md:w-[160px] h-12 flex flex-col justify-center items-center mt-1">
+
+        {/* Play/Pause icon overlay */}
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full">
+            <div
+              className="text-white"
+            >
+              {isPlaying ? <PauseIcon /> : <PlayIcon />}
+            </div>
+        </div>
+      </button>
+
+      {/* Title/Artist below */}
+      <div className="text-center w-28 md:w-36 h-12 flex flex-col justify-center items-center mt-1">
         {item.type === 'podcast' && (
           <>
             <p className="text-sm font-bold text-white truncate w-full">{item.title || "Contenido Aleatorio"}</p>

@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
-import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS } from './constants';
+import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS, NEWS_INTRO_URL, CHARACTER_IMAGES } from './constants';
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
@@ -13,7 +13,7 @@ import WelcomeForm from './components/WelcomeForm';
 import CircularPlayer from './components/CircularPlayer';
 import BackgroundImage from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
-import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo, VideoPodcast } from './types';
+import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo, VideoPodcast, AppSettings } from './types';
 import OwnerControls from './components/OwnerControls';
 import ConfigModal from './components/ConfigModal';
 import WelcomeConfirmationModal from './components/WelcomeConfirmationModal';
@@ -37,6 +37,7 @@ const apiKey = getApiKey();
 const ai: GoogleGenAI | null = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
+const SETTINGS_KEY = 'elNexoDigitalSettings';
 
 const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
   if (!ai) {
@@ -49,7 +50,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 
   try {
     const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-    const prompt = `Genera un resumen de las 4 noticias más urgentes y de última hora a nivel mundial y de Uruguay para hoy, ${today}. Asegúrate de que la información sea lo más actualizada posible, idealmente de los últimos minutos u horas. Para cada una, da un titular conciso y un resumen de no más de 30 palabras. Usa este formato exacto para cada noticia, separándolas con un doble salto de línea:\nTITULAR: [el titular]\nRESUMEN: [el resumen]`;
+    const prompt = `Genera un resumen de las 4 noticias más urgentes y de última hora a nivel mundial y de Uruguay para hoy, ${today}. Asegúrate de que la información sea lo más actualizada posible. Para cada noticia, da un titular conciso y un resumen muy breve de una oración. Usa este formato estricto para cada noticia, separándolas con un doble salto de línea (no agregues texto introductorio ni conclusiones):\nTITULAR: [el titular]\nRESUMEN: [el resumen]`;
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -151,12 +152,14 @@ export default function App(): React.ReactNode {
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true });
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
   
   const stingerTimeoutRef = useRef<number | null>(null);
   const stingerAudioContextRef = useRef<AudioContext | null>(null);
+  const greetingAudioContextRef = useRef<AudioContext | null>(null);
   
   const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
     // If an immersive video is playing, don't shuffle anything new.
@@ -227,9 +230,12 @@ export default function App(): React.ReactNode {
             setIsOwner(true);
         }
       }
+      const storedSettings = localStorage.getItem(SETTINGS_KEY);
+      if (storedSettings) {
+        setSettings(prev => ({ ...prev, ...JSON.parse(storedSettings) }));
+      }
     } catch (error) {
-      console.error("Failed to parse user info from localStorage", error);
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      console.error("Failed to parse user info or settings from localStorage", error);
     }
   }, []);
 
@@ -389,6 +395,15 @@ export default function App(): React.ReactNode {
         };
     }
 
+    if (finalContent.type === 'news' && settings.playNewsAlert) {
+      try {
+        const alertAudio = new Audio(NEWS_INTRO_URL);
+        alertAudio.play().catch(e => console.error("News alert audio failed to play:", e));
+      } catch (e) {
+        console.error("Error creating news alert audio:", e);
+      }
+    }
+
     // Set the initial state (e.g., loading state)
     setActivePopup(finalContent);
 
@@ -421,7 +436,7 @@ export default function App(): React.ReactNode {
         setActivePlayer(null);
       }
     }
-  }, [activePlayer, activePopup]);
+  }, [activePlayer, activePopup, settings.playNewsAlert]);
 
   // Effect for scheduled popups
   useEffect(() => {
@@ -469,6 +484,14 @@ export default function App(): React.ReactNode {
         setIsOwner(true);
     }
   };
+
+  const handleSettingsChange = (newSettings: Partial<AppSettings>) => {
+    setSettings(prev => {
+      const updatedSettings = { ...prev, ...newSettings };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(updatedSettings));
+      return updatedSettings;
+    });
+  };
   
   const handleInstallApp = async () => {
     if (!installPromptEvent) {
@@ -487,6 +510,22 @@ export default function App(): React.ReactNode {
     
     // Always show the welcome modal after the user starts.
     setShowWelcomeModal(true);
+    
+    // Initialize and resume the audio context on user interaction to allow autoplay.
+    if (!greetingAudioContextRef.current) {
+        try {
+            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContext) {
+                greetingAudioContextRef.current = new AudioContext();
+            }
+        } catch (e) {
+            console.error("Failed to create AudioContext for greetings.", e);
+        }
+    }
+    if (greetingAudioContextRef.current && greetingAudioContextRef.current.state === 'suspended') {
+        greetingAudioContextRef.current.resume();
+    }
+
 
     // Play greeting audio after a small delay to not overlap with modals
     setTimeout(() => {
@@ -509,11 +548,33 @@ export default function App(): React.ReactNode {
       if (greetingUrls.length > 0) {
         const randomGreetingUrl = getRandomItem(greetingUrls);
         try {
-          const greetingAudio = new Audio(randomGreetingUrl);
-          greetingAudio.play().catch(error => {
-            // Autoplay might be blocked by the browser. Log error for debugging.
-            console.error("Greeting audio autoplay failed:", error);
-          });
+           const audioContext = greetingAudioContextRef.current;
+           // Use Web Audio API if available, as it's more robust for this use case.
+           if (audioContext) {
+             fetch(randomGreetingUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    source.start();
+                })
+                .catch(error => {
+                    console.error("Greeting audio playback failed via Web Audio API:", error);
+                });
+           } else {
+             // Fallback for older browsers
+             const greetingAudio = new Audio(randomGreetingUrl);
+             greetingAudio.play().catch(error => {
+                console.error("Greeting audio autoplay failed (fallback):", error);
+             });
+           }
         } catch (error) {
           console.error("Error creating or playing greeting audio:", error);
         }
@@ -548,30 +609,6 @@ export default function App(): React.ReactNode {
       default: return '';
     }
   }, [timeOfDay]);
-  
-  const characterInfo = useMemo(() => {
-    switch (timeOfDay) {
-      case TimeOfDay.Morning:
-        return {
-          src: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Grace-removebg-preview_julviv.png',
-          alt: 'Personaje de la mañana, Graciela Aquelarre',
-        };
-      case TimeOfDay.Afternoon:
-        return {
-          src: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Sergio-removebg-preview_wl4ewa.png',
-          alt: 'Personaje de la tarde, Sergio Será',
-        };
-      case TimeOfDay.Night:
-      case TimeOfDay.Noctambulo:
-        return {
-          src: 'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756527988/Gabriel-removebg-preview_u7x1rs.png',
-          alt: 'Personaje de la noche, Gabriel Callum',
-        };
-      default:
-        return null;
-    }
-  }, [timeOfDay]);
-
 
   const handleMainPlayerToggle = () => {
     if (isMainPlayerActive) {
@@ -687,21 +724,22 @@ export default function App(): React.ReactNode {
 
   return (
     <main 
-      className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 transition-all duration-1000"
+      className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-between transition-all duration-1000"
     >
       <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
 
-      {characterInfo && (
+      {/* Character Image */}
+      <div className="absolute left-0 top-0 h-full w-auto z-0 pointer-events-none">
         <img
-          src={characterInfo.src}
-          alt={characterInfo.alt}
-          className="absolute top-1/2 left-0 -translate-y-1/2 h-[70vh] w-auto object-contain pointer-events-none animate-fade-in opacity-70 transition-opacity duration-500"
-          style={{ zIndex: 1 }}
+          key={timeOfDay}
+          src={CHARACTER_IMAGES[timeOfDay]}
+          alt={`Anfitrión de ${timeOfDay}`}
+          className="h-full object-cover object-left animate-fade-in opacity-50"
         />
-      )}
+      </div>
 
-      <div className="absolute left-[-2rem] md:left-[-3rem] top-0 bottom-0 flex items-center z-10 pointer-events-none">
-          <h1 className="transform -rotate-90 text-white font-brittany text-7xl md:text-8xl tracking-wider whitespace-nowrap opacity-25">
+      <div className="absolute left-[-4.5rem] md:left-[-3rem] top-0 bottom-0 flex items-center z-10 pointer-events-none">
+          <h1 className="transform -rotate-90 text-white font-brittany text-6xl md:text-8xl tracking-wider whitespace-nowrap opacity-25">
               El Nexo Digital
           </h1>
       </div>
@@ -712,24 +750,74 @@ export default function App(): React.ReactNode {
           </p>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 z-10 opacity-70">
-        {mainPlayerItem && (
+      {/* Top-centered player and vibe button */}
+      <div className="flex justify-center items-start gap-4 md:gap-8 z-10 pt-4 md:pt-8">
+          {mainPlayerItem && (
           <CircularPlayer
-            item={mainPlayerItem}
-            isPlaying={isMainPlayerActive}
-            onTogglePlay={handleMainPlayerToggle}
+              item={mainPlayerItem}
+              isPlaying={isMainPlayerActive}
+              onTogglePlay={handleMainPlayerToggle}
           />
-        )}
-        <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black">
-          <VideoPlayer 
-            videoUrl={currentVideoUrl} 
-            loop={false}
-            muted={true}
-            onEnded={handleVideoEnded}
-            onError={handleVideoError}
-          />
-        </div>
+          )}
+          <button
+              onClick={handleVibeChange}
+              aria-label="Cambiar la onda"
+              className="relative w-28 h-28 md:w-36 md:h-36 group focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 rounded-full"
+          >
+              {/* SVG for curved text */}
+              <svg
+                  viewBox="0 0 100 100"
+                  className="w-full h-full absolute top-0 left-0 transition-transform duration-700 ease-in-out group-hover:rotate-180"
+              >
+                  <defs>
+                  <path
+                      id="text-arc"
+                      d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"
+                  />
+                  </defs>
+                  <text
+                      className="font-display text-[9px] md:text-[11px] text-white tracking-[0.15em] opacity-70"
+                      fill="currentColor"
+                  >
+                  <textPath href="#text-arc" startOffset="75%" textAnchor="middle">
+                      CAMBIAR LA ONDA
+                  </textPath>
+                  </text>
+              </svg>
+
+              {/* The image in the center */}
+              <img
+                  src="https://res.cloudinary.com/ddmj6zevz/image/upload/v1756851098/Generated_Image_September_02__2025_-_1_54PM-removebg-preview_fpoafd.png"
+                  alt="Un martillo y cincel de piedra descansan sobre un montón de rocas."
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-28 md:h-28 rounded-full object-cover shadow-lg border-2 border-white/20 group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+              />
+          </button>
       </div>
+
+      {/* Bottom content area */}
+      <div className="flex flex-col items-center gap-4 px-4 z-10 pb-4 md:pb-8">
+          {/* Typewriter text */}
+          <div className="w-full max-w-3xl text-center pointer-events-none">
+              {mainPlayerItem?.type === 'music' && mainPlayerItem.description && (
+              <TypewriterText
+                  key={mainPlayerItem.videoId} 
+                  text={mainPlayerItem.description}
+              />
+              )}
+          </div>
+
+          {/* Video player */}
+          <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black opacity-70">
+              <VideoPlayer 
+                  videoUrl={currentVideoUrl} 
+                  loop={false}
+                  muted={true}
+                  onEnded={handleVideoEnded}
+                  onError={handleVideoError}
+              />
+          </div>
+      </div>
+
 
       {isPlaying && currentAudioId && (
         <AudioPlayer 
@@ -739,15 +827,6 @@ export default function App(): React.ReactNode {
           volume={audioPlayerVolume}
         />
       )}
-      
-       <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-3xl text-center px-4 z-10 pointer-events-none">
-        {mainPlayerItem?.type === 'music' && mainPlayerItem.description && (
-          <TypewriterText
-            key={mainPlayerItem.videoId} 
-            text={mainPlayerItem.description}
-          />
-        )}
-      </div>
       
       <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
         {isOwner && (
@@ -762,42 +841,6 @@ export default function App(): React.ReactNode {
         )}
       </div>
 
-      <div className="absolute bottom-4 right-4 z-20">
-        <button
-          onClick={handleVibeChange}
-          aria-label="Cambiar la onda"
-          className="relative w-36 h-36 group focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 rounded-full"
-        >
-          {/* SVG for curved text */}
-          <svg
-            viewBox="0 0 100 100"
-            className="w-full h-full absolute top-0 left-0 transition-transform duration-700 ease-in-out group-hover:rotate-180"
-          >
-            <defs>
-              <path
-                id="text-arc"
-                d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"
-              />
-            </defs>
-            <text
-              className="font-display text-[11px] text-white tracking-[0.15em] opacity-70"
-              fill="currentColor"
-            >
-              <textPath href="#text-arc" startOffset="75%" textAnchor="middle">
-                CAMBIAR LA ONDA
-              </textPath>
-            </text>
-          </svg>
-
-          {/* The image in the center */}
-          <img
-            src="https://res.cloudinary.com/ddmj6zevz/image/upload/v1756851098/Generated_Image_September_02__2025_-_1_54PM-removebg-preview_fpoafd.png"
-            alt="Un martillo y cincel de piedra descansan sobre un montón de rocas."
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full object-cover shadow-lg border-2 border-white/20 group-hover:scale-105 transition-transform duration-300 pointer-events-none"
-          />
-        </button>
-      </div>
-
       <PopupModal content={activePopup} onClose={handleClosePopup} />
       
       {showConfigModal && (
@@ -806,6 +849,8 @@ export default function App(): React.ReactNode {
             userInfo={userInfo}
             timeGreeting={timeGreeting}
             ai={ai}
+            settings={settings}
+            onSettingsChange={handleSettingsChange}
           />
       )}
 

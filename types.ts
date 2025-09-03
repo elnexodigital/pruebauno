@@ -75,3 +75,7 @@ export interface PopupContent {
   videoAspectRatio?: string;
   weather?: WeatherInfo;
 }
+
+export interface AppSettings {
+  playNewsAlert: boolean;
+}
