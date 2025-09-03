@@ -271,7 +271,7 @@ export default function App(): React.ReactNode {
 
   // Effect for handling audio stingers with auto-ducking
   useEffect(() => {
-    let stingerAudio: HTMLAudioElement | null = null;
+    let isCancelled = false;
 
     const scheduleTimeout = () => {
       if (stingerTimeoutRef.current) {
@@ -287,45 +287,39 @@ export default function App(): React.ReactNode {
 
     const playStingerAndScheduleNext = () => {
       const randomStingerUrl = getRandomItem(AUDIO_STINGERS);
-      stingerAudio = new Audio(randomStingerUrl);
-      stingerAudio.crossOrigin = "anonymous"; // Required for Web Audio API
+      const context = masterAudioContextRef.current;
+      const destination = masterAudioDestinationRef.current;
 
-      const onStingerEnd = () => {
-        setMainPlayerVolume(1.0); // Restore main audio volume
-        if (stingerAudio) {
-          stingerAudio.removeEventListener('ended', onStingerEnd);
-          stingerAudio.removeEventListener('error', onStingerError);
-        }
-        scheduleTimeout();
-      };
+      if (!context || !destination) {
+        console.error("Master audio context not available for stinger playback.");
+        if (!isCancelled) scheduleTimeout();
+        return;
+      }
 
-      const onStingerError = (e: ErrorEvent | string) => {
-        console.error("Audio stinger playback error:", e);
-        setMainPlayerVolume(1.0); // Restore volume on error too
-        if (stingerAudio) {
-          stingerAudio.removeEventListener('ended', onStingerEnd);
-          stingerAudio.removeEventListener('error', onStingerError);
-        }
-        scheduleTimeout();
-      };
+      setMainPlayerVolume(0.1); // Duck main audio
 
-      stingerAudio.addEventListener('ended', onStingerEnd);
-      stingerAudio.addEventListener('error', onStingerError);
-      
-      setMainPlayerVolume(0.1); // Duck main audio. Master compressor will help balance.
+      fetch(randomStingerUrl)
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .then(arrayBuffer => context.decodeAudioData(arrayBuffer))
+        .then(audioBuffer => {
+          if (isCancelled) return;
 
-      // Use Master Web Audio Context to boost volume and improve quality
-      try {
-        const context = masterAudioContextRef.current;
-        const destination = masterAudioDestinationRef.current;
-        
-        if (context && destination && stingerAudio) {
           if (context.state === 'suspended') {
             context.resume();
           }
-
-          const source = context.createMediaElementSource(stingerAudio);
           
+          const source = context.createBufferSource();
+          source.buffer = audioBuffer;
+          source.onended = () => {
+            if (isCancelled) return;
+            setMainPlayerVolume(1.0); // Restore main audio volume
+            scheduleTimeout();
+          };
+          
+          // Re-create the same audio processing chain for quality
           const compressor = context.createDynamicsCompressor();
           compressor.threshold.setValueAtTime(-40, context.currentTime);
           compressor.knee.setValueAtTime(30, context.currentTime);
@@ -338,19 +332,15 @@ export default function App(): React.ReactNode {
 
           // Chain: source -> gain -> compressor -> master chain destination
           source.connect(gainNode).connect(compressor).connect(destination);
-        } else {
-          // Fallback for browsers without Web Audio API
-          stingerAudio.volume = 1.0;
-        }
-      } catch (webAudioError) {
-        console.error("Web Audio API for stinger failed, using standard volume.", webAudioError);
-        stingerAudio.volume = 1.0;
-      }
-
-      stingerAudio.play().catch(error => {
-        console.error("Audio stinger playback failed:", error);
-        onStingerError(error.toString());
-      });
+          
+          source.start();
+        })
+        .catch(error => {
+          console.error("Audio stinger playback error:", error);
+          if (isCancelled) return;
+          setMainPlayerVolume(1.0); // Restore volume on error too
+          scheduleTimeout();
+        });
     };
     
     // Conditions to run the stinger logic
@@ -363,16 +353,12 @@ export default function App(): React.ReactNode {
 
     // Cleanup function
     return () => {
+      isCancelled = true;
       if (stingerTimeoutRef.current) {
         clearTimeout(stingerTimeoutRef.current);
       }
-      if (stingerAudio) {
-        stingerAudio.pause();
-        stingerAudio.src = '';
-      }
       setMainPlayerVolume(1.0);
     };
-    
   }, [isMainPlayerActive, mainPlayerItem]);
 
   const handleShowPopup = useCallback(async (content?: PopupContent) => {

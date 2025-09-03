@@ -30,77 +30,70 @@ const GeminiIcon: React.FC = () => (
 const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination }) => {
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const audioQueueRef = useRef<string[]>([]);
-  const currentAudioIndexRef = useRef(0);
   const isCancelledRef = useRef(false);
 
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
   
-  // This effect will manage the entire audio lifecycle for the modal
   useEffect(() => {
     isCancelledRef.current = false;
-    currentAudioIndexRef.current = 0;
-    audioQueueRef.current = [];
+    let cleanup = () => {
+      isCancelledRef.current = true;
+    };
 
-    // Cleanup previous audio element if it exists
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      audioPlayerRef.current = null;
-    }
-    // Disconnect previous source node
-    if(sourceNodeRef.current) {
-        sourceNodeRef.current.disconnect();
-        sourceNodeRef.current = null;
-    }
+    // --- Handle News TTS with Web Speech API ---
+    if (isNewsLoaded) {
+      if (window.speechSynthesis?.speaking) {
+        window.speechSynthesis.cancel();
+      }
 
-    if (!content) {
-      return;
-    }
+      const textsToSpeak = (content.text as NewsItem[])
+        .flatMap(item => [item.headline, item.summary])
+        .filter(text => text && text.trim() !== '');
 
-    const audioPlayer = new Audio();
-    audioPlayer.crossOrigin = "anonymous";
-    audioPlayerRef.current = audioPlayer;
+      if (textsToSpeak.length > 0 && audioContext) {
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        
+        const speakQueue = (index: number) => {
+          if (isCancelledRef.current || index >= textsToSpeak.length) {
+            return;
+          }
 
-    const playNextChunk = () => {
-      if (isCancelledRef.current || currentAudioIndexRef.current >= audioQueueRef.current.length) {
-        return;
+          const utterance = new SpeechSynthesisUtterance(textsToSpeak[index]);
+          utterance.lang = 'es-ES';
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          
+          utterance.onend = () => {
+            setTimeout(() => speakQueue(index + 1), 300);
+          };
+
+          utterance.onerror = (e) => {
+            console.error("Web Speech API error:", e);
+            setTimeout(() => speakQueue(index + 1), 300);
+          };
+
+          window.speechSynthesis.speak(utterance);
+        };
+        speakQueue(0);
       }
       
-      if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
-      
-      const nextSrc = audioQueueRef.current[currentAudioIndexRef.current];
-      currentAudioIndexRef.current++;
+      cleanup = () => {
+        isCancelledRef.current = true;
+        if (window.speechSynthesis?.speaking) {
+          window.speechSynthesis.cancel();
+        }
+      };
 
-      audioPlayer.src = nextSrc;
-      audioPlayer.play().catch(error => {
-        console.error(`Playback initiation failed for ${nextSrc}:`, error);
-        setTimeout(playNextChunk, 250);
-      });
-    };
+    // --- Handle static audioUrl with Web Audio API ---
+    } else if (content?.audioUrl && audioContext && audioDestination) {
+      const audioPlayer = new Audio();
+      audioPlayer.crossOrigin = "anonymous";
+      audioPlayer.src = content.audioUrl;
+      audioPlayerRef.current = audioPlayer;
 
-    const handleEnded = () => {
-      setTimeout(playNextChunk, 500);
-    };
-
-    const handleError = () => {
-      const error = audioPlayer.error;
-      const src = audioPlayer.currentSrc;
-      console.error(`TTS Audio Error on segment ${currentAudioIndexRef.current - 1}:`, {
-          code: error?.code,
-          message: error?.message,
-          src: src
-      });
-      setTimeout(playNextChunk, 250);
-    };
-
-    audioPlayer.addEventListener('ended', handleEnded);
-    audioPlayer.addEventListener('error', handleError);
-    
-    // Connect to the master audio context passed from App.tsx
-    try {
-      if (audioContext && audioDestination && !sourceNodeRef.current) {
+      try {
         const source = audioContext.createMediaElementSource(audioPlayer);
         sourceNodeRef.current = source;
         
@@ -112,45 +105,36 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
         compressor.release.setValueAtTime(0.25, audioContext.currentTime);
         
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 4.0; // Significant boost for TTS clarity
+        gainNode.gain.value = 4.0; 
 
-        // Connect source -> gain -> compressor -> master destination
         source.connect(gainNode).connect(compressor).connect(audioDestination);
+
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+        audioPlayer.play().catch(e => console.error("Static audio playback failed:", e));
+      } catch (e) {
+        console.error("Failed to setup Web Audio for popup:", e);
       }
-    } catch (e) {
-      console.error("Failed to setup Web Audio for popup.", e);
+
+      cleanup = () => {
+        isCancelledRef.current = true;
+        if (audioPlayer) {
+          audioPlayer.pause();
+          audioPlayer.src = '';
+        }
+        if (sourceNodeRef.current) {
+          try {
+            sourceNodeRef.current.disconnect();
+          } catch(e) {
+             // Can error if already disconnected
+          }
+          sourceNodeRef.current = null;
+        }
+      };
     }
-
-    if (isNewsLoaded) {
-      const textsToSpeak = (content.text as NewsItem[])
-        .flatMap(item => [item.headline, item.summary])
-        .filter(text => text && text.trim() !== '');
-
-      if (textsToSpeak.length > 0) {
-        audioQueueRef.current = textsToSpeak.map(text => {
-          const encodedText = encodeURIComponent(text.substring(0, 200));
-          return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=es&client=tw-ob`;
-        });
-        playNextChunk();
-      }
-    } else if (content.audioUrl) {
-      audioQueueRef.current = [content.audioUrl];
-      playNextChunk();
-    }
-
-    return () => {
-      isCancelledRef.current = true;
-      if (audioPlayer) {
-        audioPlayer.pause();
-        audioPlayer.src = '';
-        audioPlayer.removeEventListener('ended', handleEnded);
-        audioPlayer.removeEventListener('error', handleError);
-      }
-      if(sourceNodeRef.current){
-        sourceNodeRef.current.disconnect();
-        sourceNodeRef.current = null;
-      }
-    };
+    
+    return cleanup;
 
   }, [content, isNewsLoaded, audioContext, audioDestination]);
 
