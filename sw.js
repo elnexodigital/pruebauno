@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-nexo-digital-cache-v4'; // Version bumped to ensure SW update
+const CACHE_NAME = 'el-nexo-digital-cache-v5'; // Version bumped to ensure SW update
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -6,7 +6,9 @@ const URLS_TO_CACHE = [
   '/index.tsx',
   'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756714882/logo_el_nexo_digital_assa82.png',
   'https://res.cloudinary.com/ddmj6zevz/raw/upload/v1756916641/brittany_ifg3wl.ttf',
-  'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756588189/pexels-life-of-pix-8892_ymfsnd.jpg'
+  'https://res.cloudinary.com/ddmj6zevz/image/upload/v1756588189/pexels-life-of-pix-8892_ymfsnd.jpg',
+  'https://res.cloudinary.com/ddmj6zevz/image/upload/w_192,h_192,c_fit,f_auto,q_auto/v1756714882/logo_el_nexo_digital_assa82.png',
+  'https://res.cloudinary.com/ddmj6zevz/image/upload/w_512,h_512,c_fit,f_auto,q_auto/v1756714882/logo_el_nexo_digital_assa82.png'
 ];
 
 // Install the service worker and cache the static assets

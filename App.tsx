@@ -17,7 +17,7 @@ import TypewriterText from './components/TypewriterText';
 import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo, VideoPodcast, AppSettings } from './types';
 import OwnerControls from './components/OwnerControls';
 import ConfigModal from './components/ConfigModal';
-import WelcomeConfirmationModal from './components/WelcomeConfirmationModal';
+import InstallPwaButton from './components/InstallPwaButton';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -151,7 +151,6 @@ export default function App(): React.ReactNode {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true });
 
   const isPlaying = activePlayer !== null;
@@ -509,7 +508,6 @@ export default function App(): React.ReactNode {
 
   const handleStart = () => {
     setIsStarted(true);
-    setShowWelcomeModal(true);
     
     initAudioContext();
     if (masterAudioContextRef.current && masterAudioContextRef.current.state === 'suspended') {
@@ -640,28 +638,32 @@ export default function App(): React.ReactNode {
   }
 
   if (!isStarted) {
+    const handleConfirmAndStart = async () => {
+      if (installPromptEvent) {
+        await handleInstallApp();
+      }
+      handleStart();
+    };
+
     return (
       <div 
         className="relative w-screen h-screen flex flex-col items-center justify-center transition-all duration-1000 p-4"
       >
         <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
         <div className="relative text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg space-y-6 z-10 max-w-md w-full">
-          <h1 className="font-brittany text-4xl md:text-5xl font-normal text-white mb-2 tracking-wide">El Nexo Digital</h1>
-          <p className="text-lg md:text-xl text-gray-200 mb-4">{timeGreeting}, {userInfo.name}.</p>
+          <p className="text-lg md:text-xl text-gray-200 whitespace-pre-wrap">
+            {`${userInfo.name}, al tocar "Me sumo", estás instalando la app que conecta todos los servicios gratuitos en un solo lugar.
+Este es tu Nexo Digital, tu espacio, tu señal, 24 horas al día 7 días a la semana.
+
+GRACIAS!!!`}
+          </p>
           
           <div className="flex flex-col items-center gap-4">
             <button
-              onClick={handleStart}
+              onClick={handleConfirmAndStart}
               className="w-full px-8 py-4 bg-white text-gray-900 font-bold text-lg rounded-full shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300 ease-in-out"
             >
-              Seguir como {userInfo.name}
-            </button>
-
-            <button
-              onClick={handleChangeUser}
-              className="text-gray-300 hover:text-white hover:underline transition-colors text-sm mt-4"
-            >
-              ¿No eres {userInfo.name}? Cambiar de usuario
+              Me sumo
             </button>
           </div>
         </div>
@@ -675,13 +677,14 @@ export default function App(): React.ReactNode {
         <div 
           className="relative w-full max-w-sm aspect-[9/16] bg-black shadow-2xl rounded-lg flex flex-col overflow-hidden animate-scale-up"
         >
-          <div className="w-full aspect-square">
+          <div className="w-full aspect-square bg-black">
             <VideoPlayer 
               videoUrl={immersiveVideoPodcast.videoUrl}
               loop={false}
               muted={false}
               onEnded={handleImmersiveVideoEnded}
               onError={handleImmersiveVideoEnded} // Also exit on error
+              objectFit="contain"
             />
           </div>
           <div className="flex-1 relative p-6 flex items-start justify-center overflow-y-auto">
@@ -796,6 +799,7 @@ export default function App(): React.ReactNode {
       )}
       
       <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
+        {installPromptEvent && <InstallPwaButton onClick={handleInstallApp} />}
         {isOwner && (
             <OwnerControls 
                 onShowPopup={() => handleShowPopup()} 
@@ -821,14 +825,6 @@ export default function App(): React.ReactNode {
             settings={settings}
             onSettingsChange={handleSettingsChange}
           />
-      )}
-
-      {showWelcomeModal && (
-        <WelcomeConfirmationModal 
-            onClose={() => setShowWelcomeModal(false)}
-            onInstall={handleInstallApp}
-            installPromptEvent={installPromptEvent}
-        />
       )}
     </main>
   );

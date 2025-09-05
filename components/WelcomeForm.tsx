@@ -29,12 +29,11 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, imageUrl, overlayClas
     >
       <BackgroundImage imageUrl={imageUrl} overlayClass={overlayClass} />
       <div className="relative w-full max-w-md text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg z-10">
-        <h1 className="font-brittany text-3xl md:text-4xl font-normal text-white mb-2 tracking-wide">El Nexo Digital</h1>
-        <p className="text-base text-gray-200 mb-8">¡Hola! Por única vez, decime tu nombre así sé a quién dirigirme.</p>
+        <p className="text-lg md:text-xl text-gray-200 mb-8">Bienvenid@ ✨ Qué alegría enorme tenerte por acá. Antes de seguir, ¿me decís tu nombre?</p>
         
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-200">Nombre</label>
+            <label htmlFor="name" className="sr-only">Nombre</label>
             <input
               type="text"
               id="name"
@@ -52,7 +51,7 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, imageUrl, overlayClas
             type="submit"
             className="w-full mt-4 px-8 py-3 bg-white text-gray-900 font-semibold rounded-full shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300 ease-in-out"
           >
-            Guardar y Entrar
+            Siguiente
           </button>
         </form>
       </div>

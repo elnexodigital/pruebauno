@@ -40,7 +40,6 @@ export interface MediaItem {
 export interface VideoPodcast {
   id: string;
   title: string;
-  coverUrl: string;
   videoUrl: string;
   transcript: string;
 }

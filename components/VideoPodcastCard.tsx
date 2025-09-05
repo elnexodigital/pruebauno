@@ -1,6 +1,7 @@
 import React from 'react';
 import { VideoPodcast } from '../types';
 import PlayIcon from './icons/PlayIcon';
+import { NEXO_DIGITAL_LOGO_URL } from '../constants';
 
 interface VideoPodcastCardProps {
   podcast: VideoPodcast;
@@ -21,9 +22,9 @@ const VideoPodcastCard: React.FC<VideoPodcastCardProps> = ({ podcast, onClick })
         className="relative w-[120px] h-[120px] md:w-[160px] md:h-[160px] rounded-2xl shadow-2xl overflow-hidden bg-gray-900/50"
       >
         <img 
-          src={podcast.coverUrl}
+          src={NEXO_DIGITAL_LOGO_URL}
           alt={podcast.title}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 p-2"
         />
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="text-white rounded-full p-4 bg-white/10 backdrop-blur-sm">
