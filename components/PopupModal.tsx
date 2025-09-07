@@ -30,43 +30,61 @@ const GeminiIcon: React.FC = () => (
 const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination }) => {
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const onCloseRef = useRef(onClose);
   
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
   
+  useEffect(() => {
+    // Keep the ref updated with the latest onClose function to avoid stale closures.
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   // Effect for Text-to-Speech (TTS) for news
   useEffect(() => {
     if (!isNewsLoaded || !content) {
       return;
     }
 
+    // Ensure any previous speech is stopped before starting a new one.
     window.speechSynthesis.cancel();
     
-    let textToSpeak = `${content.title}. `;
+    let textToSpeak = '';
     
     if (content.weather) {
-      textToSpeak += `El clima en Juan Lacaze: ${content.weather.temperature} grados, cielo ${content.weather.description}, y vientos de ${content.weather.windSpeed}. `;
+      textToSpeak += `El pronóstico para Juan Lacaze: ${content.weather.temperature} grados, cielo ${content.weather.description}, con vientos de ${content.weather.windSpeed}. `;
     }
 
     if (Array.isArray(content.text)) {
-      content.text.forEach(newsItem => {
-        textToSpeak += `Titular: ${newsItem.headline}. Resumen: ${newsItem.summary}. `;
-      });
+      // Construct a natural-sounding news report without reading labels like "Titular".
+      const newsText = content.text
+        .map(newsItem => `${newsItem.headline}. ${newsItem.summary}`)
+        .join(' Siguiente noticia... ');
+      textToSpeak += `${content.title}. ${newsText}`;
     }
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = 'es-UY';
-    utterance.rate = 0.95;
+    utterance.rate = 1.0;
     utterance.pitch = 1.0;
+    utterance.volume = 1.0; // Volume is set to maximum (1.0) for clarity.
     
+    // Automatically close the modal after speech finishes. This is now more reliable.
+    utterance.onend = () => {
+      setTimeout(() => onCloseRef.current(), 1500); // Use ref to call the latest onClose.
+    };
+
+    // Delay speech to allow modal animations to complete.
     const speakTimeout = setTimeout(() => {
       window.speechSynthesis.speak(utterance);
     }, 500);
 
+    // Cleanup function to run when the component unmounts or dependencies change.
     return () => {
       clearTimeout(speakTimeout);
-      window.speechSynthesis.cancel();
+      utterance.onend = null; // Prevent memory leaks.
+      window.speechSynthesis.cancel(); // Stop any speech in progress.
     };
-  }, [isNewsLoaded, content]);
+  }, [isNewsLoaded, content]); // `onClose` is removed from deps to prevent re-runs from parent component.
   
   useEffect(() => {
     let staticAudioCleanup = () => {};
