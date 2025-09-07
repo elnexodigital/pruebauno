@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-nexo-digital-cache-v6'; // Version bumped to ensure SW update
+const CACHE_NAME = 'el-nexo-digital-cache-v7'; // Version bumped to ensure SW update
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -39,6 +39,14 @@ self.addEventListener('activate', event => {
     }).then(() => self.clients.claim()) // Take control of all pages under its scope immediately.
   );
 });
+
+// Listen for a message from the client to skip waiting.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 
 // Fetch handler: cache-first for assets, network-first for APIs.
 self.addEventListener('fetch', event => {

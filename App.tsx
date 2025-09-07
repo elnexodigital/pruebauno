@@ -151,6 +151,9 @@ export default function App(): React.ReactNode {
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
   const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true, selectedVoiceId: '', elevenLabsApiKey: '' });
+  
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const serviceWorkerRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
@@ -244,19 +247,46 @@ export default function App(): React.ReactNode {
     }
   }, [isStarted, mainPlayerItem, immersiveVideoPodcast, shuffleMedia]);
   
-  // Effect to handle the PWA installation prompt
+  // Effect to handle PWA installation and updates
   useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) {
+          serviceWorkerRegistrationRef.current = reg;
+          if (reg.waiting) {
+            setShowUpdateBanner(true);
+          }
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setShowUpdateBanner(true);
+                }
+              });
+            }
+          });
+        }
+      });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          window.location.reload();
+          refreshing = true;
+        }
+      });
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      // Only show the prompt if the app is not already installed
-       if (!window.matchMedia('(display-mode: standalone)').matches && !(window.navigator as any).standalone) {
+      if (!window.matchMedia('(display-mode: standalone)').matches && !(window.navigator as any).standalone) {
          setInstallPromptEvent(e);
        }
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
     const handleAppInstalled = () => {
-      // Clear the prompt event once the app is installed
       setInstallPromptEvent(null);
     };
     window.addEventListener('appinstalled', handleAppInstalled);
@@ -267,6 +297,14 @@ export default function App(): React.ReactNode {
     };
   }, []);
 
+  const handleUpdateApp = () => {
+    const reg = serviceWorkerRegistrationRef.current;
+    if (reg && reg.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      setShowUpdateBanner(false);
+    }
+  };
+
 
   // Effect for handling audio stingers with auto-ducking
   useEffect(() => {
@@ -276,7 +314,6 @@ export default function App(): React.ReactNode {
       if (stingerTimeoutRef.current) {
         clearTimeout(stingerTimeoutRef.current);
       }
-      // Random time between 1 minute (60,000ms) and 3 minutes (180,000ms)
       const minDelay = 1 * 60 * 1000;
       const maxDelay = 3 * 60 * 1000;
       const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
@@ -318,7 +355,6 @@ export default function App(): React.ReactNode {
             scheduleTimeout();
           };
           
-          // Re-create the same audio processing chain for quality
           const compressor = context.createDynamicsCompressor();
           compressor.threshold.setValueAtTime(-40, context.currentTime);
           compressor.knee.setValueAtTime(30, context.currentTime);
@@ -327,9 +363,8 @@ export default function App(): React.ReactNode {
           compressor.release.setValueAtTime(0.25, context.currentTime);
           
           const gainNode = context.createGain();
-          gainNode.gain.value = 3.5; // 350% volume boost for presence
+          gainNode.gain.value = 3.5;
 
-          // Chain: source -> gain -> compressor -> master chain destination
           source.connect(gainNode).connect(compressor).connect(destination);
           
           source.start();
@@ -342,7 +377,6 @@ export default function App(): React.ReactNode {
         });
     };
     
-    // Conditions to run the stinger logic
     if (!isMainPlayerActive || mainPlayerItem?.type !== 'music' || AUDIO_STINGERS.length === 0) {
       if (stingerTimeoutRef.current) clearTimeout(stingerTimeoutRef.current);
       return;
@@ -350,7 +384,6 @@ export default function App(): React.ReactNode {
 
     scheduleTimeout();
 
-    // Cleanup function
     return () => {
       isCancelled = true;
       if (stingerTimeoutRef.current) {
@@ -637,6 +670,17 @@ export default function App(): React.ReactNode {
 
   return (
     <>
+      {showUpdateBanner && (
+        <div className="fixed bottom-20 right-5 z-[10000] p-4 bg-gray-800 text-white rounded-lg shadow-2xl flex items-center space-x-4 animate-fade-in">
+          <span>Nueva versión disponible.</span>
+          <button 
+            onClick={handleUpdateApp}
+            className="px-4 py-2 bg-indigo-600 font-semibold rounded-md hover:bg-indigo-700 transition-colors"
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
       {installPromptEvent && <InstallPwaButton onClick={handleInstallApp} />}
       
       {!isStarted ? (
