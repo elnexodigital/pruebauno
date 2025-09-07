@@ -11,6 +11,7 @@ interface ConfigModalProps {
   ai: GoogleGenAI | null;
   settings: AppSettings;
   onSettingsChange: (newSettings: Partial<AppSettings>) => void;
+  elevenLabsApiKey?: string;
 }
 
 type ApiStatus = 'idle' | 'checking' | 'success' | 'error';
@@ -42,7 +43,7 @@ const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string }> =
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
-          <span>Conexión con {serviceName}: Fallida</span>
+          <span>Conexión con {serviceName}: Fallida. Revisa la clave en <b>apiKeys.ts</b>.</span>
         </div>
      );
   }
@@ -51,13 +52,12 @@ const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string }> =
 };
 
 
-const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeting, ai, settings, onSettingsChange }) => {
+const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeting, ai, settings, onSettingsChange, elevenLabsApiKey }) => {
   const [geminiApiStatus, setGeminiApiStatus] = useState<ApiStatus>('idle');
   const [elevenLabsApiStatus, setElevenLabsApiStatus] = useState<ApiStatus>('idle');
-  const [elevenLabsApiKeyInput, setElevenLabsApiKeyInput] = useState(settings.elevenLabsApiKey || '');
-
-  const verifyElevenLabsKey = async (key: string) => {
-    if (!key) {
+  
+  const verifyElevenLabsKey = async (key?: string) => {
+    if (!key || key.startsWith('PEGA_AQUÍ')) {
       setElevenLabsApiStatus('error');
       return;
     }
@@ -90,12 +90,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
     };
     
     verifyGeminiKey();
-    verifyElevenLabsKey(settings.elevenLabsApiKey || '');
-  }, [ai, settings.elevenLabsApiKey]);
-
-  const handleSaveKey = () => {
-    onSettingsChange({ elevenLabsApiKey: elevenLabsApiKeyInput.trim() });
-  };
+    verifyElevenLabsKey(elevenLabsApiKey);
+  }, [ai, elevenLabsApiKey]);
 
   return (
     <div 
@@ -125,40 +121,23 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                     <ApiStatusIndicator status={geminiApiStatus} serviceName="Gemini" />
                     <ApiStatusIndicator status={elevenLabsApiStatus} serviceName="ElevenLabs" />
                 </div>
+                 <p className="text-xs text-gray-500">
+                    Las claves de API para OpenWeather y ElevenLabs se configuran en el archivo <code>apiKeys.ts</code>. La clave de Gemini se gestiona automáticamente.
+                </p>
             </div>
 
             <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Voz de las Noticias (ElevenLabs)</h3>
-                 <div>
-                    <label htmlFor="elevenlabs-key" className="block text-sm font-medium text-gray-700">
-                        Clave de API de ElevenLabs
-                    </label>
-                    <div className="mt-1 flex rounded-md shadow-sm">
-                        <input
-                            type="password"
-                            id="elevenlabs-key"
-                            value={elevenLabsApiKeyInput}
-                            onChange={(e) => setElevenLabsApiKeyInput(e.target.value)}
-                            className="flex-1 block w-full min-w-0 rounded-none rounded-l-md border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                            placeholder="Pega tu clave de API aquí"
-                        />
-                        <button
-                            onClick={handleSaveKey}
-                            className="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-4 text-sm font-medium text-gray-700 hover:bg-gray-100"
-                        >
-                            Guardar
-                        </button>
-                    </div>
-                     {elevenLabsApiStatus === 'error' && <p className="mt-2 text-xs text-red-600">La clave no es válida o no se ha configurado.</p>}
-                </div>
-                {elevenLabsApiStatus === 'success' && (
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Voz de las Noticias</h3>
+                {elevenLabsApiStatus === 'success' ? (
                     <div className="mt-4">
                         <VoiceSelector 
                             settings={settings} 
                             onSettingsChange={onSettingsChange} 
-                            elevenLabsApiKey={settings.elevenLabsApiKey} 
+                            elevenLabsApiKey={elevenLabsApiKey} 
                         />
                     </div>
+                ) : (
+                    <p className="text-sm text-gray-500">Configura una clave de ElevenLabs válida en <code>apiKeys.ts</code> para seleccionar una voz.</p>
                 )}
             </div>
 
@@ -184,6 +163,13 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                         />
                     </button>
                 </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Instalar Aplicación (PWA)</h3>
+                <p className="text-sm text-gray-600">
+                    Si no ves el botón de instalación en la pantalla principal, puedes instalar la aplicación manually desde el menú de tu navegador (usualmente en los tres puntos "...") y buscando la opción <b>"Instalar El Nexo Digital"</b> o <b>"Agregar a la pantalla de inicio"</b>.
+                </p>
             </div>
 
         </div>

@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS, NEWS_INTRO_URL, CHARACTER_IMAGES } from './constants';
+import { OPENWEATHER_API_KEY, ELEVENLABS_API_KEY } from './apiKeys';
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
@@ -21,20 +22,12 @@ import InstallPwaButton from './components/InstallPwaButton';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// FIX: Safely initialize the AI client to prevent crashes in non-Vite environments.
-const getApiKey = (): string | undefined => {
-  try {
-    // This will throw if import.meta.env is undefined.
-    // FIX: Cast `import.meta` to `any` to bypass TypeScript error when 'vite/client' types are not found.
-    return (import.meta as any).env.VITE_API_KEY;
-  } catch (e) {
-    console.warn("Could not access import.meta.env. VITE_API_KEY is not available. AI features will be disabled.");
-    return undefined;
-  }
-};
+const geminiApiKey = process.env.API_KEY;
+const openWeatherApiKey = OPENWEATHER_API_KEY;
 
-const apiKey = getApiKey();
-const ai: GoogleGenAI | null = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const ai: GoogleGenAI | null = (geminiApiKey) 
+  ? new GoogleGenAI({ apiKey: geminiApiKey }) 
+  : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 const SETTINGS_KEY = 'elNexoDigitalSettings';
@@ -43,7 +36,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
   if (!ai) {
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Clave de API no encontrada", summary: "La variable VITE_API_KEY no se encontró en este entorno. Las funciones de IA están deshabilitadas." }],
+        text: [{ headline: "Clave de API no encontrada", summary: "La clave de Gemini no se encontró o es incorrecta. Las funciones de IA están deshabilitadas." }],
         sources: [],
     };
   }
@@ -99,34 +92,29 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 };
 
 const fetchWeather = async (): Promise<WeatherInfo | null> => {
-  if (!ai) {
-    console.warn("AI client not initialized, cannot fetch weather.");
+  if (!openWeatherApiKey || openWeatherApiKey.startsWith('PEGA_AQUÍ')) {
+    console.warn("OpenWeather API key not found in apiKeys.ts, cannot fetch weather.");
     return null;
   }
   try {
-    const prompt = "Cuál es el pronóstico del tiempo actual para la ciudad de Juan Lacaze, departamento de Colonia, Uruguay? Dame la temperatura actual en grados Celsius, una descripción muy breve del cielo (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.";
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            temperature: { type: Type.STRING },
-            description: { type: Type.STRING },
-            windSpeed: { type: Type.STRING },
-          },
-          required: ["temperature", "description", "windSpeed"],
-        },
-      },
-    });
-
-    const weatherData = JSON.parse(response.text);
-    return weatherData as WeatherInfo;
-
+    const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Juan%20Lacaze,UY&appid=${openWeatherApiKey}&units=metric&lang=es`);
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`OpenWeather API error: ${errorData.message}`);
+    }
+    const data = await response.json();
+    
+    if (data && data.main && data.weather && data.weather[0] && data.wind) {
+        return {
+            temperature: `${Math.round(data.main.temp)}`,
+            description: data.weather[0].description,
+            windSpeed: `${Math.round(data.wind.speed * 3.6)} km/h`, // convert m/s to km/h
+        };
+    } else {
+        throw new Error("Invalid data structure from OpenWeather API");
+    }
   } catch (error) {
-    console.error("Error fetching or parsing weather from Gemini:", error);
+    console.error("Error fetching or parsing weather from OpenWeather:", error);
     return null;
   }
 };
@@ -150,7 +138,7 @@ export default function App(): React.ReactNode {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
-  const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true, selectedVoiceId: '', elevenLabsApiKey: '' });
+  const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true, selectedVoiceId: '' });
   
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const serviceWorkerRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
@@ -250,43 +238,46 @@ export default function App(): React.ReactNode {
   // Effect to handle PWA installation and updates
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then(reg => {
-        if (reg) {
-          serviceWorkerRegistrationRef.current = reg;
-          if (reg.waiting) {
-            setShowUpdateBanner(true);
+      navigator.serviceWorker.ready.then(reg => {
+        serviceWorkerRegistrationRef.current = reg;
+        if (reg.waiting) {
+          setShowUpdateBanner(true);
+        }
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setShowUpdateBanner(true);
+              }
+            });
           }
-          reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setShowUpdateBanner(true);
-                }
-              });
-            }
-          });
-        }
-      });
+        });
 
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          window.location.reload();
-          refreshing = true;
-        }
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            window.location.reload();
+            refreshing = true;
+          }
+        });
       });
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      console.log('`beforeinstallprompt` event was fired.');
       if (!window.matchMedia('(display-mode: standalone)').matches && !(window.navigator as any).standalone) {
+         console.log('App is not installed, showing install button.');
          setInstallPromptEvent(e);
+       } else {
+        console.log('App is already installed or in standalone mode, not showing install button.');
        }
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
     const handleAppInstalled = () => {
+      console.log('App was installed.');
       setInstallPromptEvent(null);
     };
     window.addEventListener('appinstalled', handleAppInstalled);
@@ -829,7 +820,7 @@ export default function App(): React.ReactNode {
             audioContext={masterAudioContextRef.current}
             audioDestination={masterAudioDestinationRef.current}
             selectedVoiceId={settings.selectedVoiceId}
-            elevenLabsApiKey={settings.elevenLabsApiKey}
+            elevenLabsApiKey={ELEVENLABS_API_KEY}
           />
           
           {showConfigModal && (
@@ -840,6 +831,7 @@ export default function App(): React.ReactNode {
                 ai={ai}
                 settings={settings}
                 onSettingsChange={handleSettingsChange}
+                elevenLabsApiKey={ELEVENLABS_API_KEY}
               />
           )}
         </main>

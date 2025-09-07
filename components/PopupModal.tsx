@@ -31,7 +31,7 @@ const GeminiIcon: React.FC = () => (
 
 
 const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination, selectedVoiceId, elevenLabsApiKey }) => {
-  type AudioStatus = 'idle' | 'generating' | 'playing' | 'error' | 'finished';
+  type AudioStatus = 'idle' | 'generating' | 'playing' | 'error-key' | 'error-generic' | 'finished';
 
   const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -51,7 +51,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
 
     if (!elevenLabsApiKey) {
       console.error("ElevenLabs API key not found in settings. Please configure it in the settings modal.");
-      setAudioStatus('error');
+      setAudioStatus('error-key');
       return;
     }
     
@@ -84,14 +84,27 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
           },
           body: JSON.stringify({
             text: textToSpeak,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75
+            }
           }),
           signal: abortController.signal,
         });
 
         if (!response.ok) {
-           const errorBody = await response.text();
+           const errorBody = await response.json();
+           let errorMessage = `ElevenLabs API request failed with status ${response.status}`;
+           if (errorBody && errorBody.detail && errorBody.detail.message) {
+               errorMessage += `: ${errorBody.detail.message}`;
+           }
+           if (response.status === 401) {
+               console.error("ElevenLabs Error: Invalid API Key.", errorBody);
+               throw new Error("Invalid API Key");
+           }
            console.error("ElevenLabs API Error:", errorBody);
-           throw new Error(`ElevenLabs API request failed with status ${response.status}`);
+           throw new Error(errorMessage);
         }
 
         const audioBlob = await response.blob();
@@ -118,13 +131,17 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
         };
         audioPlayer.onerror = () => {
           console.error("Error playing ElevenLabs audio.");
-          setAudioStatus('error');
+          setAudioStatus('error-generic');
         }
 
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {
           console.error("Error generating or playing ElevenLabs audio:", error);
-          setAudioStatus('error');
+           if ((error as Error).message.includes("Invalid API Key")) {
+              setAudioStatus('error-key');
+          } else {
+              setAudioStatus('error-generic');
+          }
         }
       }
     };
@@ -262,8 +279,11 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
                         <span>Reproduciendo noticias...</span>
                     </>
                 )}
-                {audioStatus === 'error' && (
-                    <span className="text-red-500">Error al generar el audio. Verifica tu clave de API.</span>
+                {audioStatus === 'error-key' && (
+                    <span className="text-red-500 font-semibold">Error: Revisa tu clave de API de ElevenLabs en la configuración.</span>
+                )}
+                {audioStatus === 'error-generic' && (
+                    <span className="text-red-500 font-semibold">No se pudo generar el audio. Inténtalo más tarde.</span>
                 )}
             </div>
         )}
