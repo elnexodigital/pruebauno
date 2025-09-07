@@ -225,6 +225,7 @@ export default function App(): React.ReactNode {
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setUserInfo(parsedUser);
+        setIsStarted(true); // If user exists, assume they have already started.
         if (parsedUser.name && parsedUser.name.trim().toLowerCase() === 'leo castrillo') {
             setIsOwner(true);
         }
@@ -630,44 +631,24 @@ export default function App(): React.ReactNode {
       setImmersiveVideoPodcast(randomVP);
     }
   };
-
-  const audioPlayerVolume = isMainPlayerActive && mainPlayerItem?.type === 'music' ? mainPlayerVolume : 1.0;
-
-  if (!userInfo) {
-    return <WelcomeForm onSave={handleUserSaved} imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />;
-  }
-
-  if (!isStarted) {
-    const handleConfirmAndStart = async () => {
+  
+  const handleUserConfirmation = async () => {
       if (installPromptEvent) {
         await handleInstallApp();
       }
       handleStart();
-    };
+  };
 
+  const audioPlayerVolume = isMainPlayerActive && mainPlayerItem?.type === 'music' ? mainPlayerVolume : 1.0;
+
+  if (!isStarted) {
     return (
-      <div 
-        className="relative w-screen h-screen flex flex-col items-center justify-center transition-all duration-1000 p-4"
-      >
-        <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
-        <div className="relative text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg space-y-6 z-10 max-w-md w-full">
-          <p className="text-lg md:text-xl text-gray-200 whitespace-pre-wrap">
-            {`${userInfo.name}, al tocar "Me sumo", estás instalando la app que conecta todos los servicios gratuitos en un solo lugar.
-Este es tu Nexo Digital, tu espacio, tu señal, 24 horas al día 7 días a la semana.
-
-GRACIAS!!!`}
-          </p>
-          
-          <div className="flex flex-col items-center gap-4">
-            <button
-              onClick={handleConfirmAndStart}
-              className="w-full px-8 py-4 bg-white text-gray-900 font-bold text-lg rounded-full shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300 ease-in-out"
-            >
-              Me sumo
-            </button>
-          </div>
-        </div>
-      </div>
+      <WelcomeForm 
+        onSave={handleUserSaved} 
+        onConfirm={handleUserConfirmation}
+        imageUrl={STATIC_BACKGROUND_URL} 
+        overlayClass={overlayClass} 
+      />
     );
   }
   

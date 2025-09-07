@@ -4,15 +4,16 @@ import BackgroundImage from './BackgroundVideo';
 
 interface WelcomeFormProps {
   onSave: (user: UserInfo) => void;
+  onConfirm: () => Promise<void>;
   imageUrl: string;
   overlayClass: string;
 }
 
-const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, imageUrl, overlayClass }) => {
+const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, onConfirm, imageUrl, overlayClass }) => {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -21,6 +22,7 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, imageUrl, overlayClas
     }
     setError('');
     onSave({ name: trimmedName });
+    await onConfirm();
   };
 
   return (
@@ -29,7 +31,13 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, imageUrl, overlayClas
     >
       <BackgroundImage imageUrl={imageUrl} overlayClass={overlayClass} />
       <div className="relative w-full max-w-md text-center p-8 bg-black bg-opacity-30 rounded-2xl shadow-2xl backdrop-blur-lg z-10">
-        <p className="text-lg md:text-xl text-gray-200 mb-8">Bienvenid@ ✨ Qué alegría enorme tenerte por acá. Antes de seguir, ¿me decís tu nombre?</p>
+        <p className="text-lg md:text-xl text-gray-200 mb-8 whitespace-pre-wrap">
+{`Bienvenid@ ✨ Qué alegría enorme tenerte por acá.
+
+Al tocar "Me sumo", aceptas iniciar la experiencia de audio y se te ofrecerá instalar la aplicación para un acceso más fácil.
+
+Este es tu Nexo Digital, tu espacio, tu señal, 24/7.`}
+        </p>
         
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div>
@@ -51,7 +59,7 @@ const WelcomeForm: React.FC<WelcomeFormProps> = ({ onSave, imageUrl, overlayClas
             type="submit"
             className="w-full mt-4 px-8 py-3 bg-white text-gray-900 font-semibold rounded-full shadow-lg hover:bg-gray-200 transform hover:scale-105 transition-all duration-300 ease-in-out"
           >
-            Siguiente
+            Me sumo
           </button>
         </form>
       </div>
