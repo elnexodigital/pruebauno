@@ -146,7 +146,6 @@ export default function App(): React.ReactNode {
   
   const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
   const [shownPopups, setShownPopups] = useState<string[]>([]);
-  const [isDuckedForPopup, setIsDuckedForPopup] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
@@ -370,7 +369,7 @@ export default function App(): React.ReactNode {
         finalContent = {
             type: 'news', time: '',
             title: "Generando Noticias...",
-            text: "Un momento por favor, estamos conectando con el nexo para traerte las últimas novedades.",
+            text: "Un momento por favor, estamos conectando con el mundo para traerte las últimas novedades.",
             videoUrl: "https://res.cloudinary.com/ddmj6zevz/video/upload/v1756612883/Vienen_las_Noticias_ujmv2i.mp4",
             videoAspectRatio: '1080/330',
         };
@@ -382,6 +381,13 @@ export default function App(): React.ReactNode {
         alertAudio.play().catch(e => console.error("News alert audio failed to play:", e));
       } catch (e) {
         console.error("Error creating news alert audio:", e);
+      }
+    }
+    
+    // Stop the main player instead of ducking the volume
+    if (finalContent.audioUrl || finalContent.videoUrl || finalContent.type === 'news') {
+      if (activePlayer) {
+        setActivePlayer(null);
       }
     }
 
@@ -405,12 +411,6 @@ export default function App(): React.ReactNode {
                 text: 'No se pudieron obtener las noticias. Por favor, inténtalo más tarde.'
             } : null);
         }
-    }
-    
-    if (finalContent.audioUrl || finalContent.videoUrl || finalContent.type === 'news') {
-      if (activePlayer) {
-        setIsDuckedForPopup(true);
-      }
     }
   }, [activePlayer, activePopup, settings.playNewsAlert]);
 
@@ -444,8 +444,9 @@ export default function App(): React.ReactNode {
   }, [isStarted, shownPopups, handleShowPopup]);
 
   const handleClosePopup = () => {
-    setIsDuckedForPopup(false);
     setActivePopup(null);
+    // Resume music with a new track after the popup closes
+    shuffleMedia({ forceMusic: true });
   };
   
   const handleUserSaved = (user: UserInfo) => {
@@ -633,7 +634,6 @@ export default function App(): React.ReactNode {
   };
 
   const stingerDuckedVolume = (isMainPlayerActive && mainPlayerItem?.type === 'music') ? mainPlayerVolume : 1.0;
-  const audioPlayerVolume = isDuckedForPopup ? 0.05 : stingerDuckedVolume;
 
   return (
     <>
@@ -763,7 +763,7 @@ export default function App(): React.ReactNode {
               videoId={currentAudioId} 
               onEnded={handleAudioEnded}
               onError={handleAudioError}
-              volume={audioPlayerVolume}
+              volume={stingerDuckedVolume}
               audioContext={masterAudioContextRef.current}
               audioDestination={masterAudioDestinationRef.current}
             />

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-nexo-digital-cache-v5'; // Version bumped to ensure SW update
+const CACHE_NAME = 'el-nexo-digital-cache-v6'; // Version bumped to ensure SW update
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -45,7 +45,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
   // Network-first for API calls to ensure fresh data.
-  if (url.hostname.includes('googleapis.com')) {
+  if (url.hostname.includes('googleapis.com') || url.hostname.includes('elevenlabs.io')) {
     event.respondWith(
       fetch(event.request).catch(() => {
         return new Response(JSON.stringify({ error: "API call failed, device is offline" }), {

@@ -84,13 +84,14 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
           },
           body: JSON.stringify({
             text: textToSpeak,
-            model_id: 'eleven_multilingual_v2',
           }),
           signal: abortController.signal,
         });
 
         if (!response.ok) {
-          throw new Error(`ElevenLabs API request failed with status ${response.status}`);
+           const errorBody = await response.text();
+           console.error("ElevenLabs API Error:", errorBody);
+           throw new Error(`ElevenLabs API request failed with status ${response.status}`);
         }
 
         const audioBlob = await response.blob();
