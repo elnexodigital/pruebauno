@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import CloseIcon from './icons/CloseIcon';
 import { PopupContent, NewsItem } from '../types';
 import WeatherIcon from './WeatherIcon';
-import SpeakerIcon from './icons/SpeakerIcon';
 
 interface PopupModalProps {
   content: PopupContent | null;
@@ -32,20 +31,9 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const utterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
-  const utteranceIndexRef = useRef(0);
-
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
   
   useEffect(() => {
-    // Stop any speaking audio when content changes or modal closes
-    if (window.speechSynthesis?.speaking) {
-      window.speechSynthesis.cancel();
-    }
-    setIsSpeaking(false);
-    utterancesRef.current = [];
-
     let staticAudioCleanup = () => {};
 
     // --- Handle static audioUrl with Web Audio API ---
@@ -93,70 +81,21 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
           sourceNodeRef.current = null;
         }
       };
-    // --- Prepare News TTS utterances (but don't play them) ---
-    } else if (isNewsLoaded) {
-       const textsToSpeak = (content.text as NewsItem[])
-        .flatMap(item => [item.headline, item.summary])
-        .filter(text => text && text.trim() !== '');
-      
-       const handleUtteranceEnd = () => {
-        utteranceIndexRef.current++;
-        if (utteranceIndexRef.current < utterancesRef.current.length) {
-            window.speechSynthesis.speak(utterancesRef.current[utteranceIndexRef.current]);
-        } else {
-            setIsSpeaking(false);
-        }
-       };
-
-       utterancesRef.current = textsToSpeak.map(text => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = 'es-ES';
-          utterance.rate = 1;
-          utterance.pitch = 1;
-          utterance.onend = handleUtteranceEnd;
-          utterance.onerror = (e) => {
-              console.error("Web Speech API error:", e);
-              handleUtteranceEnd(); // Skip to next on error
-          };
-          return utterance;
-       });
     }
     
     return () => {
-        if (window.speechSynthesis?.speaking) {
-            window.speechSynthesis.cancel();
-        }
         staticAudioCleanup();
     };
 
-  }, [content, isNewsLoaded, audioContext, audioDestination]);
-
-  const handleToggleSpeech = () => {
-    if (isSpeaking) {
-        window.speechSynthesis.cancel();
-        setIsSpeaking(false);
-    } else if (utterancesRef.current.length > 0) {
-        if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume();
-        }
-        utteranceIndexRef.current = 0;
-        window.speechSynthesis.speak(utterancesRef.current[0]);
-        setIsSpeaking(true);
-    }
-  };
+  }, [content, audioContext, audioDestination]);
 
   const handleModalClose = () => {
-    if (window.speechSynthesis?.speaking) {
-        window.speechSynthesis.cancel();
-    }
     onClose();
   };
-
 
   if (!content) return null;
   
   const hasSources = content.sources && content.sources.length > 0;
-  const canSpeak = isNewsLoaded && utterancesRef.current.length > 0;
 
   return (
     <div 
@@ -187,15 +126,6 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
                   <h2 className="font-brittany text-4xl text-gray-900">El Nexo Digital</h2>
                   <p className="text-sm text-gray-600 mt-1">Una forma diferente de saber la noticia</p>
                 </div>
-                {canSpeak && (
-                   <button
-                    onClick={handleToggleSpeech}
-                    className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors flex-shrink-0"
-                    aria-label={isSpeaking ? "Detener narración" : "Leer noticias en voz alta"}
-                   >
-                     <SpeakerIcon isSpeaking={isSpeaking} />
-                   </button>
-                )}
               </div>
             </>
           ) : (

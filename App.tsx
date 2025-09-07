@@ -225,7 +225,7 @@ export default function App(): React.ReactNode {
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setUserInfo(parsedUser);
-        setIsStarted(true); // If user exists, assume they have already started.
+        // DO NOT set isStarted here. Wait for user interaction.
         if (parsedUser.name && parsedUser.name.trim().toLowerCase() === 'leo castrillo') {
             setIsOwner(true);
         }
