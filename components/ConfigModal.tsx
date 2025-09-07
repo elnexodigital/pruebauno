@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { UserInfo, AppSettings } from '../types';
 import CloseIcon from './icons/CloseIcon';
+import VoiceSelector from './VoiceSelector';
 
 interface ConfigModalProps {
   onClose: () => void;
@@ -15,7 +16,33 @@ interface ConfigModalProps {
 
 type ApiStatus = 'idle' | 'checking' | 'success' | 'error';
 
-const StatusIndicator: React.FC<{ status: ApiStatus }> = ({ status }) => {
+const Instructions: React.FC = () => (
+    <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-700 space-y-4">
+        <p className="font-semibold">Cómo configurar tu API Key de ElevenLabs:</p>
+        <ol className="list-decimal list-inside space-y-2">
+            <li>
+                <strong>Crea el archivo secreto:</strong> En la lista de archivos de tu proyecto (a la izquierda), busca el ícono para crear un archivo nuevo (suele ser una hoja con un '+').
+            </li>
+            <li>
+                <strong>Nómbralo correctamente:</strong> Nombra el archivo <strong>exactamente</strong> como <code className="bg-gray-200 px-1 rounded">.env</code> y presiona Enter. ¡El punto al principio es crucial!
+                <p className="text-xs text-gray-500 mt-1">
+                    <strong>Tip:</strong> Si el editor insiste en agregar <code className="bg-gray-200 px-1 rounded">.tsx</code>, intenta nombrar el archivo entre comillas: <code className="bg-gray-200 px-1 rounded">".env"</code>. O crea un archivo llamado <code className="bg-gray-200 px-1 rounded">temp.txt</code>, luego haz clic derecho, selecciona "Renombrar" y cámbiale el nombre a <code className="bg-gray-200 px-1 rounded">.env</code>.
+                </p>
+            </li>
+            <li>
+                <strong>Pega tu clave:</strong> Abre el archivo <code className="bg-gray-200 px-1 rounded">.env</code> y pega la siguiente línea, reemplazando <code className="bg-gray-200 px-1 rounded">TU_CLAVE_AQUI</code> con tu clave real de ElevenLabs.
+                 <pre className="bg-gray-200 text-gray-800 p-2 rounded mt-1 text-xs">
+                    <code>VITE_ELEVENLABS_API_KEY=TU_CLAVE_AQUI</code>
+                 </pre>
+            </li>
+            <li>
+                <strong>Refresca la aplicación:</strong> Una vez guardado el archivo, recarga esta página.
+            </li>
+        </ol>
+    </div>
+);
+
+const StatusIndicator: React.FC<{ status: ApiStatus; onShowInstructions: () => void; }> = ({ status, onShowInstructions }) => {
   if (status === 'checking') {
     return (
       <div className="flex items-center space-x-2 text-gray-500">
@@ -38,11 +65,19 @@ const StatusIndicator: React.FC<{ status: ApiStatus }> = ({ status }) => {
 
   if (status === 'error') {
     return (
-      <div className="flex items-center space-x-2 text-red-600">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-        </svg>
-        <span>Conexión con la API de Gemini: Fallida</span>
+      <div className="flex flex-col items-start space-y-2">
+        <div className="flex items-center space-x-2 text-red-600">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          <span>Conexión con la API de Gemini: Fallida</span>
+        </div>
+        <button
+          onClick={onShowInstructions}
+          className="text-sm text-indigo-600 hover:underline"
+        >
+          ¿No funciona? Toca aquí para ver las instrucciones.
+        </button>
       </div>
     );
   }
@@ -51,6 +86,7 @@ const StatusIndicator: React.FC<{ status: ApiStatus }> = ({ status }) => {
 
 const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeting, ai, settings, onSettingsChange }) => {
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiStatus>('idle');
+  const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
     const verifyApiKey = async () => {
@@ -106,10 +142,11 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
             </div>
             <div>
                 <h3 className="text-sm font-semibold text-gray-500 mb-1">Conexión API</h3>
-                <StatusIndicator status={apiKeyStatus} />
+                <StatusIndicator status={apiKeyStatus} onShowInstructions={() => setShowInstructions(true)} />
                 {apiKeyStatus === 'error' && (
                   <p className="text-xs text-gray-500 mt-1">La clave de API (VITE_API_KEY) no se encontró o no es válida. Las funciones de IA están desactivadas.</p>
                 )}
+                {showInstructions && apiKeyStatus === 'error' && <Instructions />}
             </div>
             <div className="pt-4 border-t border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-500 mb-2">Notificaciones Sonoras</h3>
@@ -133,6 +170,10 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                         />
                     </button>
                 </div>
+            </div>
+            <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-500 mb-2">Voz de las Noticias (ElevenLabs)</h3>
+                <VoiceSelector settings={settings} onSettingsChange={onSettingsChange} />
             </div>
         </div>
 

@@ -151,7 +151,7 @@ export default function App(): React.ReactNode {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
-  const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true });
+  const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true, selectedVoiceId: '' });
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
@@ -629,181 +629,176 @@ export default function App(): React.ReactNode {
   };
   
   const handleUserConfirmation = async () => {
-      if (installPromptEvent) {
-        await handleInstallApp();
-      }
       handleStart();
   };
 
   const stingerDuckedVolume = (isMainPlayerActive && mainPlayerItem?.type === 'music') ? mainPlayerVolume : 1.0;
-  const audioPlayerVolume = isDuckedForPopup ? 0.1 : stingerDuckedVolume;
-
-  if (!isStarted) {
-    return (
-      <WelcomeForm 
-        onSave={handleUserSaved} 
-        onConfirm={handleUserConfirmation}
-        imageUrl={STATIC_BACKGROUND_URL} 
-        overlayClass={overlayClass} 
-      />
-    );
-  }
-  
-  if (immersiveVideoPodcast) {
-    return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-        <div 
-          className="relative w-full max-w-sm aspect-[9/16] bg-black shadow-2xl rounded-lg flex flex-col overflow-hidden animate-scale-up"
-        >
-          <div className="w-full aspect-square bg-black">
-            <VideoPlayer 
-              videoUrl={immersiveVideoPodcast.videoUrl}
-              loop={false}
-              muted={false}
-              onEnded={handleImmersiveVideoEnded}
-              onError={handleImmersiveVideoEnded} // Also exit on error
-              objectFit="contain"
-            />
-          </div>
-          <div className="flex-1 relative p-6 flex items-start justify-center overflow-y-auto">
-            <p className="font-typewriter text-lg md:text-xl text-white/95 text-center w-full whitespace-pre-wrap">
-              {immersiveVideoPodcast.transcript}
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const audioPlayerVolume = isDuckedForPopup ? 0.05 : stingerDuckedVolume;
 
   return (
-    <main 
-      className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-between transition-all duration-1000"
-    >
-      <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
-
-      <div className="absolute left-0 top-0 h-full w-auto z-0 pointer-events-none">
-        <img
-          key={timeOfDay}
-          src={CHARACTER_IMAGES[timeOfDay]}
-          alt={`Anfitrión de ${timeOfDay}`}
-          className="h-full object-cover object-left animate-fade-in opacity-50"
-        />
-      </div>
-
-      <div className="absolute left-[-4.5rem] md:left-[-3rem] top-0 bottom-0 flex items-center z-10 pointer-events-none">
-          <h1 className="transform -rotate-90 text-white font-brittany text-6xl md:text-8xl tracking-wider whitespace-nowrap opacity-25">
-              El Nexo Digital
-          </h1>
-      </div>
+    <>
+      {installPromptEvent && <InstallPwaButton onClick={handleInstallApp} />}
       
-      <div className="absolute right-2 md:right-3 top-0 h-full flex items-center z-10 pointer-events-none">
-          <p className="[writing-mode:vertical-rl] transform rotate-180 font-display text-lg md:text-xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70 whitespace-nowrap">
-              {showInfoText}
-          </p>
-      </div>
-
-      <div className="flex justify-center items-start gap-4 md:gap-8 z-10 pt-4 md:pt-8">
-          {mainPlayerItem && (
-          <CircularPlayer
-              item={mainPlayerItem}
-              isPlaying={isMainPlayerActive}
-              onTogglePlay={handleMainPlayerToggle}
-          />
-          )}
-          <button
-              onClick={handleVibeChange}
-              aria-label="Cambiar la onda"
-              className="relative w-28 h-28 md:w-36 md:h-36 group focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 rounded-full"
+      {!isStarted ? (
+        <WelcomeForm 
+          onSave={handleUserSaved} 
+          onConfirm={handleUserConfirmation}
+          imageUrl={STATIC_BACKGROUND_URL} 
+          overlayClass={overlayClass} 
+        />
+      ) : immersiveVideoPodcast ? (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div 
+            className="relative w-full max-w-sm aspect-[9/16] bg-black shadow-2xl rounded-lg flex flex-col overflow-hidden animate-scale-up"
           >
-              <svg
-                  viewBox="0 0 100 100"
-                  className="w-full h-full absolute top-0 left-0 transition-transform duration-700 ease-in-out group-hover:rotate-180"
-              >
-                  <defs>
-                  <path
-                      id="text-arc"
-                      d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"
-                  />
-                  </defs>
-                  <text
-                      className="font-display text-[9px] md:text-[11px] text-white tracking-[0.15em] opacity-70"
-                      fill="currentColor"
-                  >
-                  <textPath href="#text-arc" startOffset="75%" textAnchor="middle">
-                      CAMBIAR LA ONDA
-                  </textPath>
-                  </text>
-              </svg>
-
-              <img
-                  src="https://res.cloudinary.com/ddmj6zevz/image/upload/v1756851098/Generated_Image_September_02__2025_-_1_54PM-removebg-preview_fpoafd.png"
-                  alt="Un martillo y cincel de piedra descansan sobre un montón de rocas."
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-28 md:h-28 rounded-full object-cover shadow-lg border-2 border-white/20 group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+            <div className="w-full aspect-square bg-black">
+              <VideoPlayer 
+                videoUrl={immersiveVideoPodcast.videoUrl}
+                loop={false}
+                muted={false}
+                onEnded={handleImmersiveVideoEnded}
+                onError={handleImmersiveVideoEnded} // Also exit on error
+                objectFit="contain"
               />
-          </button>
-      </div>
+            </div>
+            <div className="flex-1 relative p-6 flex items-start justify-center overflow-y-auto">
+              <p className="font-typewriter text-lg md:text-xl text-white/95 text-center w-full whitespace-pre-wrap">
+                {immersiveVideoPodcast.transcript}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <main 
+          className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-between transition-all duration-1000"
+        >
+          <BackgroundImage imageUrl={STATIC_BACKGROUND_URL} overlayClass={overlayClass} />
 
-      <div className="flex flex-col items-center gap-4 px-4 z-10 pb-4 md:pb-8">
-          <div className="w-full max-w-3xl text-center pointer-events-none">
-              {mainPlayerItem?.type === 'music' && mainPlayerItem.description && (
-              <TypewriterText
-                  key={mainPlayerItem.videoId} 
-                  text={mainPlayerItem.description}
+          <div className="absolute left-0 top-0 h-full w-auto z-0 pointer-events-none">
+            <img
+              key={timeOfDay}
+              src={CHARACTER_IMAGES[timeOfDay]}
+              alt={`Anfitrión de ${timeOfDay}`}
+              className="h-full object-cover object-left animate-fade-in opacity-50"
+            />
+          </div>
+
+          <div className="absolute left-[-4.5rem] md:left-[-3rem] top-0 bottom-0 flex items-center z-10 pointer-events-none">
+              <h1 className="transform -rotate-90 text-white font-brittany text-6xl md:text-8xl tracking-wider whitespace-nowrap opacity-25">
+                  El Nexo Digital
+              </h1>
+          </div>
+          
+          <div className="absolute right-2 md:right-3 top-0 h-full flex items-center z-10 pointer-events-none">
+              <p className="[writing-mode:vertical-rl] transform rotate-180 font-display text-lg md:text-xl text-white tracking-[0.1em] md:tracking-[0.15em] opacity-70 whitespace-nowrap">
+                  {showInfoText}
+              </p>
+          </div>
+
+          <div className="flex justify-center items-start gap-4 md:gap-8 z-10 pt-4 md:pt-8">
+              {mainPlayerItem && (
+              <CircularPlayer
+                  item={mainPlayerItem}
+                  isPlaying={isMainPlayerActive}
+                  onTogglePlay={handleMainPlayerToggle}
               />
               )}
+              <button
+                  onClick={handleVibeChange}
+                  aria-label="Cambiar la onda"
+                  className="relative w-28 h-28 md:w-36 md:h-36 group focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 rounded-full"
+              >
+                  <svg
+                      viewBox="0 0 100 100"
+                      className="w-full h-full absolute top-0 left-0 transition-transform duration-700 ease-in-out group-hover:rotate-180"
+                  >
+                      <defs>
+                      <path
+                          id="text-arc"
+                          d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0"
+                      />
+                      </defs>
+                      <text
+                          className="font-display text-[9px] md:text-[11px] text-white tracking-[0.15em] opacity-70"
+                          fill="currentColor"
+                      >
+                      <textPath href="#text-arc" startOffset="75%" textAnchor="middle">
+                          CAMBIAR LA ONDA
+                      </textPath>
+                      </text>
+                  </svg>
+
+                  <img
+                      src="https://res.cloudinary.com/ddmj6zevz/image/upload/v1756851098/Generated_Image_September_02__2025_-_1_54PM-removebg-preview_fpoafd.png"
+                      alt="Un martillo y cincel de piedra descansan sobre un montón de rocas."
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-28 md:h-28 rounded-full object-cover shadow-lg border-2 border-white/20 group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                  />
+              </button>
           </div>
 
-          <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black opacity-70">
-              <VideoPlayer 
-                  videoUrl={currentVideoUrl} 
-                  loop={false}
-                  muted={true}
-                  onEnded={handleVideoEnded}
-                  onError={handleVideoError}
-              />
+          <div className="flex flex-col items-center gap-4 px-4 z-10 pb-4 md:pb-8">
+              <div className="w-full max-w-3xl text-center pointer-events-none">
+                  {mainPlayerItem?.type === 'music' && mainPlayerItem.description && (
+                  <TypewriterText
+                      key={mainPlayerItem.videoId} 
+                      text={mainPlayerItem.description}
+                  />
+                  )}
+              </div>
+
+              <div className="w-full max-w-xl aspect-[1080/337] rounded-2xl shadow-2xl overflow-hidden bg-black opacity-70">
+                  <VideoPlayer 
+                      videoUrl={currentVideoUrl} 
+                      loop={false}
+                      muted={true}
+                      onEnded={handleVideoEnded}
+                      onError={handleVideoError}
+                  />
+              </div>
           </div>
-      </div>
 
 
-      {isPlaying && currentAudioId && (
-        <AudioPlayer 
-          videoId={currentAudioId} 
-          onEnded={handleAudioEnded}
-          onError={handleAudioError}
-          volume={audioPlayerVolume}
-          audioContext={masterAudioContextRef.current}
-          audioDestination={masterAudioDestinationRef.current}
-        />
-      )}
-      
-      <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
-        {installPromptEvent && <InstallPwaButton onClick={handleInstallApp} />}
-        {isOwner && (
-            <OwnerControls 
-                onShowPopup={() => handleShowPopup()} 
-                onShowConfig={() => setShowConfigModal(true)}
-                onTestVideoPodcast={handleTestVideoPodcast}
+          {isPlaying && currentAudioId && (
+            <AudioPlayer 
+              videoId={currentAudioId} 
+              onEnded={handleAudioEnded}
+              onError={handleAudioError}
+              volume={audioPlayerVolume}
+              audioContext={masterAudioContextRef.current}
+              audioDestination={masterAudioDestinationRef.current}
             />
-        )}
-      </div>
+          )}
+          
+          <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
+            {isOwner && (
+                <OwnerControls 
+                    onShowPopup={() => handleShowPopup()} 
+                    onShowConfig={() => setShowConfigModal(true)}
+                    onTestVideoPodcast={handleTestVideoPodcast}
+                />
+            )}
+          </div>
 
-      <PopupModal 
-        content={activePopup} 
-        onClose={handleClosePopup}
-        audioContext={masterAudioContextRef.current}
-        audioDestination={masterAudioDestinationRef.current}
-      />
-      
-      {showConfigModal && (
-          <ConfigModal 
-            onClose={() => setShowConfigModal(false)}
-            userInfo={userInfo}
-            timeGreeting={timeGreeting}
-            ai={ai}
-            settings={settings}
-            onSettingsChange={handleSettingsChange}
+          <PopupModal 
+            content={activePopup} 
+            onClose={handleClosePopup}
+            audioContext={masterAudioContextRef.current}
+            audioDestination={masterAudioDestinationRef.current}
+            selectedVoiceId={settings.selectedVoiceId}
           />
+          
+          {showConfigModal && (
+              <ConfigModal 
+                onClose={() => setShowConfigModal(false)}
+                userInfo={userInfo}
+                timeGreeting={timeGreeting}
+                ai={ai}
+                settings={settings}
+                onSettingsChange={handleSettingsChange}
+              />
+          )}
+        </main>
       )}
-    </main>
+    </>
   );
 }

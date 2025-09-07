@@ -17,14 +17,8 @@ const SpeakerIcon: React.FC<SpeakerIconProps> = ({ isSpeaking }) => (
     strokeLinejoin="round"
   >
     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-    {isSpeaking ? (
-      <>
-        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-      </>
-    ) : (
-      <line x1="23" y1="9" x2="17" y2="15"></line>
-    )}
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" className={`transition-opacity duration-300 ${isSpeaking ? 'opacity-100 animate-wave-1' : 'opacity-0'}`}></path>
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" className={`transition-opacity duration-300 ${isSpeaking ? 'opacity-100 animate-wave-2' : 'opacity-0'}`}></path>
   </svg>
 );
 

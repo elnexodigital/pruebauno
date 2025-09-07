@@ -77,4 +77,10 @@ export interface PopupContent {
 
 export interface AppSettings {
   playNewsAlert: boolean;
+  selectedVoiceId?: string;
+}
+
+export interface ElevenLabsVoice {
+  voice_id: string;
+  name: string;
 }

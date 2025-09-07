@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import CloseIcon from './icons/CloseIcon';
+import SpeakerIcon from './icons/SpeakerIcon';
 import { PopupContent, NewsItem } from '../types';
 import WeatherIcon from './WeatherIcon';
 
@@ -8,6 +9,7 @@ interface PopupModalProps {
   onClose: () => void;
   audioContext: AudioContext | null;
   audioDestination: AudioNode | null;
+  selectedVoiceId?: string;
 }
 
 const GeminiIcon: React.FC = () => (
@@ -27,7 +29,10 @@ const GeminiIcon: React.FC = () => (
 );
 
 
-const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination }) => {
+const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination, selectedVoiceId }) => {
+  type AudioStatus = 'idle' | 'generating' | 'playing' | 'error' | 'finished';
+
+  const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const onCloseRef = useRef(onClose);
@@ -35,56 +40,117 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
   
   useEffect(() => {
-    // Keep the ref updated with the latest onClose function to avoid stale closures.
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Effect for Text-to-Speech (TTS) for news
   useEffect(() => {
-    if (!isNewsLoaded || !content) {
+    if (!isNewsLoaded || !content || !audioContext || !audioDestination) {
       return;
     }
 
-    // Ensure any previous speech is stopped before starting a new one.
-    window.speechSynthesis.cancel();
+    const elevenlabsApiKey = (import.meta as any).env.VITE_ELEVENLABS_API_KEY;
+    if (!elevenlabsApiKey) {
+      console.error("ElevenLabs API key not found. Please set VITE_ELEVENLABS_API_KEY.");
+      setAudioStatus('error');
+      return;
+    }
     
+    // The user has specified "Grace" as the voice. Her Voice ID is oWAxZDx7w5z9X6Rzeh3p.
+    const defaultVoiceId = 'oWAxZDx7w5z9X6Rzeh3p'; 
+    const voiceIdToUse = selectedVoiceId || defaultVoiceId;
+
     let textToSpeak = '';
-    
     if (content.weather) {
       textToSpeak += `El pronóstico para Juan Lacaze: ${content.weather.temperature} grados, cielo ${content.weather.description}, con vientos de ${content.weather.windSpeed}. `;
     }
-
     if (Array.isArray(content.text)) {
-      // Construct a natural-sounding news report without reading labels like "Titular".
       const newsText = content.text
         .map(newsItem => `${newsItem.headline}. ${newsItem.summary}`)
-        .join(' Siguiente noticia... ');
-      textToSpeak += `${content.title}. ${newsText}`;
+        .join(' ... Siguiente noticia... ');
+      textToSpeak += `Ahora, en El Nexo Digital, las noticias del día. ${newsText}`;
     }
 
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = 'es-UY';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0; // Volume is set to maximum (1.0) for clarity.
-    
-    // Automatically close the modal after speech finishes. This is now more reliable.
-    utterance.onend = () => {
-      setTimeout(() => onCloseRef.current(), 1500); // Use ref to call the latest onClose.
+    const abortController = new AbortController();
+
+    const generateAndPlayAudio = async () => {
+      setAudioStatus('generating');
+      try {
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceIdToUse}/stream`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': elevenlabsApiKey,
+          },
+          body: JSON.stringify({
+            text: textToSpeak,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.8
+            }
+          }),
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`ElevenLabs API request failed with status ${response.status}`);
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        const audioPlayer = new Audio(audioUrl);
+        audioPlayer.crossOrigin = "anonymous";
+        audioPlayerRef.current = audioPlayer;
+
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
+        const source = audioContext.createMediaElementSource(audioPlayer);
+        sourceNodeRef.current = source;
+        source.connect(audioDestination);
+        
+        audioPlayer.play();
+        setAudioStatus('playing');
+
+        audioPlayer.onended = () => {
+          setAudioStatus('finished');
+          setTimeout(() => onCloseRef.current(), 1500);
+        };
+        audioPlayer.onerror = () => {
+          console.error("Error playing ElevenLabs audio.");
+          setAudioStatus('error');
+        }
+
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error("Error generating or playing ElevenLabs audio:", error);
+          setAudioStatus('error');
+        }
+      }
     };
+    
+    const speakTimeout = setTimeout(generateAndPlayAudio, 500);
 
-    // Delay speech to allow modal animations to complete.
-    const speakTimeout = setTimeout(() => {
-      window.speechSynthesis.speak(utterance);
-    }, 500);
-
-    // Cleanup function to run when the component unmounts or dependencies change.
     return () => {
       clearTimeout(speakTimeout);
-      utterance.onend = null; // Prevent memory leaks.
-      window.speechSynthesis.cancel(); // Stop any speech in progress.
+      abortController.abort();
+      const audioPlayer = audioPlayerRef.current;
+      if (audioPlayer) {
+        audioPlayer.pause();
+        audioPlayer.src = '';
+      }
+      if (sourceNodeRef.current) {
+        try {
+          sourceNodeRef.current.disconnect();
+        } catch(e) { /* Ignore */ }
+        sourceNodeRef.current = null;
+      }
+      setAudioStatus('idle');
     };
-  }, [isNewsLoaded, content]); // `onClose` is removed from deps to prevent re-runs from parent component.
+  }, [isNewsLoaded, content, audioContext, audioDestination, selectedVoiceId]);
   
   useEffect(() => {
     let staticAudioCleanup = () => {};
@@ -142,7 +208,6 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
   }, [content, audioContext, audioDestination]);
 
   const handleModalClose = () => {
-    window.speechSynthesis.cancel();
     onClose();
   };
 
@@ -185,6 +250,26 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
             <h2 className="text-2xl font-bold text-gray-800 pr-8">{content.title}</h2>
           )}
         </div>
+        
+        {isNewsLoaded && (
+            <div className="px-6 md:px-8 pt-4 flex items-center justify-center text-sm text-gray-600 space-x-2">
+                {audioStatus === 'generating' && (
+                    <>
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Generando audio...</span>
+                    </>
+                )}
+                {audioStatus === 'playing' && (
+                    <>
+                        <SpeakerIcon isSpeaking={true} />
+                        <span>Reproduciendo noticias...</span>
+                    </>
+                )}
+                {audioStatus === 'error' && (
+                    <span className="text-red-500">Error al generar el audio.</span>
+                )}
+            </div>
+        )}
 
         {/* Weather section */}
         {content.weather && (
