@@ -86,8 +86,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
             text: textToSpeak,
             model_id: 'eleven_multilingual_v2',
             voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.8
+              stability: 0.55,
             }
           }),
           signal: abortController.signal,
