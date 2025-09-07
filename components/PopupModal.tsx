@@ -33,10 +33,44 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
   
   const isNewsLoaded = content?.type === 'news' && Array.isArray(content.text);
   
+  // Effect for Text-to-Speech (TTS) for news
+  useEffect(() => {
+    if (!isNewsLoaded || !content) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    
+    let textToSpeak = `${content.title}. `;
+    
+    if (content.weather) {
+      textToSpeak += `El clima en Juan Lacaze: ${content.weather.temperature} grados, cielo ${content.weather.description}, y vientos de ${content.weather.windSpeed}. `;
+    }
+
+    if (Array.isArray(content.text)) {
+      content.text.forEach(newsItem => {
+        textToSpeak += `Titular: ${newsItem.headline}. Resumen: ${newsItem.summary}. `;
+      });
+    }
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = 'es-UY';
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    
+    const speakTimeout = setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 500);
+
+    return () => {
+      clearTimeout(speakTimeout);
+      window.speechSynthesis.cancel();
+    };
+  }, [isNewsLoaded, content]);
+  
   useEffect(() => {
     let staticAudioCleanup = () => {};
 
-    // --- Handle static audioUrl with Web Audio API ---
     if (content?.audioUrl && audioContext && audioDestination) {
       const audioPlayer = new Audio();
       audioPlayer.crossOrigin = "anonymous";
@@ -90,6 +124,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
   }, [content, audioContext, audioDestination]);
 
   const handleModalClose = () => {
+    window.speechSynthesis.cancel();
     onClose();
   };
 
