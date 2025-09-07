@@ -4,26 +4,26 @@ import { AppSettings, ElevenLabsVoice } from '../types';
 interface VoiceSelectorProps {
   settings: AppSettings;
   onSettingsChange: (newSettings: Partial<AppSettings>) => void;
+  elevenLabsApiKey?: string;
 }
 
-const VoiceSelector: React.FC<VoiceSelectorProps> = ({ settings, onSettingsChange }) => {
+const VoiceSelector: React.FC<VoiceSelectorProps> = ({ settings, onSettingsChange, elevenLabsApiKey }) => {
   const [voices, setVoices] = useState<ElevenLabsVoice[]>([]);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   useEffect(() => {
     const fetchVoices = async () => {
-      const elevenlabsApiKey = (import.meta as any).env.VITE_ELEVENLABS_API_KEY;
-      if (!elevenlabsApiKey) {
+      if (!elevenLabsApiKey) {
         setStatus('error');
         return;
       }
+      setStatus('loading');
       try {
         const response = await fetch('https://api.elevenlabs.io/v1/voices', {
-          headers: { 'xi-api-key': elevenlabsApiKey },
+          headers: { 'xi-api-key': elevenLabsApiKey },
         });
         if (!response.ok) throw new Error('Failed to fetch voices');
         const data = await response.json();
-        // Filter for usable voices, for example, pre-made ones.
         const usableVoices = data.voices.filter((v: any) => v.category === 'premade' && v.name !== 'Nicole');
         setVoices(usableVoices);
         setStatus('success');
@@ -34,20 +34,20 @@ const VoiceSelector: React.FC<VoiceSelectorProps> = ({ settings, onSettingsChang
     };
 
     fetchVoices();
-  }, []);
+  }, [elevenLabsApiKey]);
 
   if (status === 'loading') {
     return <div className="text-sm text-gray-500">Cargando voces...</div>;
   }
 
   if (status === 'error') {
-    return <div className="text-sm text-red-500">No se pudieron cargar las voces. Verifica la clave de API de ElevenLabs.</div>;
+    return null; // Don't show anything if the key is invalid or missing
   }
 
   return (
     <div className="flex items-center justify-between">
       <label htmlFor="voice-selector" className="text-gray-800 text-sm cursor-pointer">
-        Voz de las Noticias
+        Seleccionar Voz
       </label>
       <select
         id="voice-selector"

@@ -151,7 +151,7 @@ export default function App(): React.ReactNode {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
-  const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true, selectedVoiceId: '' });
+  const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true, selectedVoiceId: '', elevenLabsApiKey: '' });
 
   const isPlaying = activePlayer !== null;
   const isMainPlayerActive = activePlayer === 'main';
@@ -785,6 +785,7 @@ export default function App(): React.ReactNode {
             audioContext={masterAudioContextRef.current}
             audioDestination={masterAudioDestinationRef.current}
             selectedVoiceId={settings.selectedVoiceId}
+            elevenLabsApiKey={settings.elevenLabsApiKey}
           />
           
           {showConfigModal && (

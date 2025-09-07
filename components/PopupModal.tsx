@@ -10,6 +10,7 @@ interface PopupModalProps {
   audioContext: AudioContext | null;
   audioDestination: AudioNode | null;
   selectedVoiceId?: string;
+  elevenLabsApiKey?: string;
 }
 
 const GeminiIcon: React.FC = () => (
@@ -29,7 +30,7 @@ const GeminiIcon: React.FC = () => (
 );
 
 
-const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination, selectedVoiceId }) => {
+const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext, audioDestination, selectedVoiceId, elevenLabsApiKey }) => {
   type AudioStatus = 'idle' | 'generating' | 'playing' | 'error' | 'finished';
 
   const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
@@ -48,9 +49,8 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
       return;
     }
 
-    const elevenlabsApiKey = (import.meta as any).env.VITE_ELEVENLABS_API_KEY;
-    if (!elevenlabsApiKey) {
-      console.error("ElevenLabs API key not found. Please set VITE_ELEVENLABS_API_KEY.");
+    if (!elevenLabsApiKey) {
+      console.error("ElevenLabs API key not found in settings. Please configure it in the settings modal.");
       setAudioStatus('error');
       return;
     }
@@ -80,7 +80,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
           headers: {
             'Accept': 'audio/mpeg',
             'Content-Type': 'application/json',
-            'xi-api-key': elevenlabsApiKey,
+            'xi-api-key': elevenLabsApiKey,
           },
           body: JSON.stringify({
             text: textToSpeak,
@@ -150,7 +150,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
       }
       setAudioStatus('idle');
     };
-  }, [isNewsLoaded, content, audioContext, audioDestination, selectedVoiceId]);
+  }, [isNewsLoaded, content, audioContext, audioDestination, selectedVoiceId, elevenLabsApiKey]);
   
   useEffect(() => {
     let staticAudioCleanup = () => {};
@@ -266,7 +266,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
                     </>
                 )}
                 {audioStatus === 'error' && (
-                    <span className="text-red-500">Error al generar el audio.</span>
+                    <span className="text-red-500">Error al generar el audio. Verifica tu clave de API.</span>
                 )}
             </div>
         )}

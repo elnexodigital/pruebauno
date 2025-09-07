@@ -8,7 +8,6 @@ interface ConfigModalProps {
   onClose: () => void;
   userInfo: UserInfo | null;
   timeGreeting: string;
-  // FIX: The `ai` prop can be null if the API key is not available.
   ai: GoogleGenAI | null;
   settings: AppSettings;
   onSettingsChange: (newSettings: Partial<AppSettings>) => void;
@@ -16,100 +15,87 @@ interface ConfigModalProps {
 
 type ApiStatus = 'idle' | 'checking' | 'success' | 'error';
 
-const Instructions: React.FC = () => (
-    <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-700 space-y-4">
-        <p className="font-semibold">Cómo configurar tu API Key de ElevenLabs:</p>
-        <ol className="list-decimal list-inside space-y-2">
-            <li>
-                <strong>Crea el archivo secreto:</strong> En la lista de archivos de tu proyecto (a la izquierda), busca el ícono para crear un archivo nuevo (suele ser una hoja con un '+').
-            </li>
-            <li>
-                <strong>Nómbralo correctamente:</strong> Nombra el archivo <strong>exactamente</strong> como <code className="bg-gray-200 px-1 rounded">.env</code> y presiona Enter. ¡El punto al principio es crucial!
-                <p className="text-xs text-gray-500 mt-1">
-                    <strong>Tip:</strong> Si el editor insiste en agregar <code className="bg-gray-200 px-1 rounded">.tsx</code>, intenta nombrar el archivo entre comillas: <code className="bg-gray-200 px-1 rounded">".env"</code>. O crea un archivo llamado <code className="bg-gray-200 px-1 rounded">temp.txt</code>, luego haz clic derecho, selecciona "Renombrar" y cámbiale el nombre a <code className="bg-gray-200 px-1 rounded">.env</code>.
-                </p>
-            </li>
-            <li>
-                <strong>Pega tu clave:</strong> Abre el archivo <code className="bg-gray-200 px-1 rounded">.env</code> y pega la siguiente línea, reemplazando <code className="bg-gray-200 px-1 rounded">TU_CLAVE_AQUI</code> con tu clave real de ElevenLabs.
-                 <pre className="bg-gray-200 text-gray-800 p-2 rounded mt-1 text-xs">
-                    <code>VITE_ELEVENLABS_API_KEY=TU_CLAVE_AQUI</code>
-                 </pre>
-            </li>
-            <li>
-                <strong>Refresca la aplicación:</strong> Una vez guardado el archivo, recarga esta página.
-            </li>
-        </ol>
-    </div>
-);
-
-const StatusIndicator: React.FC<{ status: ApiStatus; onShowInstructions: () => void; }> = ({ status, onShowInstructions }) => {
+const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string }> = ({ status, serviceName }) => {
   if (status === 'checking') {
     return (
-      <div className="flex items-center space-x-2 text-gray-500">
+      <div className="flex items-center space-x-2 text-sm text-gray-500">
         <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-        <span>Verificando conexión con Gemini...</span>
+        <span>Verificando conexión con {serviceName}...</span>
       </div>
     );
   }
 
   if (status === 'success') {
     return (
-      <div className="flex items-center space-x-2 text-green-600">
+      <div className="flex items-center space-x-2 text-sm text-green-600">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
         </svg>
-        <span>Conexión con la API de Gemini: Exitosa</span>
+        <span>Conexión con {serviceName}: Exitosa</span>
       </div>
     );
   }
-
+    
   if (status === 'error') {
-    return (
-      <div className="flex flex-col items-start space-y-2">
-        <div className="flex items-center space-x-2 text-red-600">
+     return (
+        <div className="flex items-center space-x-2 text-sm text-red-600">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
-          <span>Conexión con la API de Gemini: Fallida</span>
+          <span>Conexión con {serviceName}: Fallida</span>
         </div>
-        <button
-          onClick={onShowInstructions}
-          className="text-sm text-indigo-600 hover:underline"
-        >
-          ¿No funciona? Toca aquí para ver las instrucciones.
-        </button>
-      </div>
-    );
+     );
   }
-  return null;
+
+  return <div className="text-sm text-gray-500">Estado de conexión desconocido.</div>;
 };
 
+
 const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeting, ai, settings, onSettingsChange }) => {
-  const [apiKeyStatus, setApiKeyStatus] = useState<ApiStatus>('idle');
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [geminiApiStatus, setGeminiApiStatus] = useState<ApiStatus>('idle');
+  const [elevenLabsApiStatus, setElevenLabsApiStatus] = useState<ApiStatus>('idle');
+  const [elevenLabsApiKeyInput, setElevenLabsApiKeyInput] = useState(settings.elevenLabsApiKey || '');
+
+  const verifyElevenLabsKey = async (key: string) => {
+    if (!key) {
+      setElevenLabsApiStatus('error');
+      return;
+    }
+    setElevenLabsApiStatus('checking');
+    try {
+      const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: { 'xi-api-key': key },
+      });
+      if (!response.ok) throw new Error('Invalid key or API error');
+      setElevenLabsApiStatus('success');
+    } catch (error) {
+      console.error("ElevenLabs API Key verification failed:", error);
+      setElevenLabsApiStatus('error');
+    }
+  };
 
   useEffect(() => {
-    const verifyApiKey = async () => {
-      // FIX: Handle the case where the AI client could not be initialized.
+    const verifyGeminiKey = async () => {
       if (!ai) {
-        setApiKeyStatus('error');
+        setGeminiApiStatus('error');
         return;
       }
-      setApiKeyStatus('checking');
+      setGeminiApiStatus('checking');
       try {
-        // A very lightweight call to check the API key
-        await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: 'test',
-        });
-        setApiKeyStatus('success');
+        await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: 'test' });
+        setGeminiApiStatus('success');
       } catch (error) {
-        console.error("API Key verification failed:", error);
-        setApiKeyStatus('error');
+        setGeminiApiStatus('error');
       }
     };
-    verifyApiKey();
-  }, [ai]);
+    
+    verifyGeminiKey();
+    verifyElevenLabsKey(settings.elevenLabsApiKey || '');
+  }, [ai, settings.elevenLabsApiKey]);
+
+  const handleSaveKey = () => {
+    onSettingsChange({ elevenLabsApiKey: elevenLabsApiKeyInput.trim() });
+  };
 
   return (
     <div 
@@ -128,31 +114,59 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
           >
             <CloseIcon />
           </button>
-          <h2 className="text-2xl font-bold text-gray-800">Estado del Sistema</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Configuración del Sistema</h2>
         </div>
 
-        <div className="flex-grow overflow-y-auto px-6 md:px-8 py-4 border-t border-b border-gray-200 space-y-4">
-            <div>
-                <h3 className="text-sm font-semibold text-gray-500 mb-1">Usuario</h3>
-                <p className="text-gray-800">Hola, {userInfo?.name || 'Invitado'}.</p>
+        <div className="flex-grow overflow-y-auto px-6 md:px-8 py-4 border-t border-b border-gray-200 space-y-6">
+            
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Conexiones de API</h3>
+                <div className="space-y-2">
+                    <ApiStatusIndicator status={geminiApiStatus} serviceName="Gemini" />
+                    <ApiStatusIndicator status={elevenLabsApiStatus} serviceName="ElevenLabs" />
+                </div>
             </div>
-             <div>
-                <h3 className="text-sm font-semibold text-gray-500 mb-1">Sistema de Saludo</h3>
-                <p className="text-gray-800">El saludo actual es: "{timeGreeting}".</p>
-            </div>
-            <div>
-                <h3 className="text-sm font-semibold text-gray-500 mb-1">Conexión API</h3>
-                <StatusIndicator status={apiKeyStatus} onShowInstructions={() => setShowInstructions(true)} />
-                {apiKeyStatus === 'error' && (
-                  <p className="text-xs text-gray-500 mt-1">La clave de API (VITE_API_KEY) no se encontró o no es válida. Las funciones de IA están desactivadas.</p>
-                )}
-                {showInstructions && apiKeyStatus === 'error' && <Instructions />}
-            </div>
+
             <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-500 mb-2">Notificaciones Sonoras</h3>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Voz de las Noticias (ElevenLabs)</h3>
+                 <div>
+                    <label htmlFor="elevenlabs-key" className="block text-sm font-medium text-gray-700">
+                        Clave de API de ElevenLabs
+                    </label>
+                    <div className="mt-1 flex rounded-md shadow-sm">
+                        <input
+                            type="password"
+                            id="elevenlabs-key"
+                            value={elevenLabsApiKeyInput}
+                            onChange={(e) => setElevenLabsApiKeyInput(e.target.value)}
+                            className="flex-1 block w-full min-w-0 rounded-none rounded-l-md border-gray-300 px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            placeholder="Pega tu clave de API aquí"
+                        />
+                        <button
+                            onClick={handleSaveKey}
+                            className="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-4 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                        >
+                            Guardar
+                        </button>
+                    </div>
+                     {elevenLabsApiStatus === 'error' && <p className="mt-2 text-xs text-red-600">La clave no es válida o no se ha configurado.</p>}
+                </div>
+                {elevenLabsApiStatus === 'success' && (
+                    <div className="mt-4">
+                        <VoiceSelector 
+                            settings={settings} 
+                            onSettingsChange={onSettingsChange} 
+                            elevenLabsApiKey={settings.elevenLabsApiKey} 
+                        />
+                    </div>
+                )}
+            </div>
+
+            <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Notificaciones Sonoras</h3>
                 <div className="flex items-center justify-between">
                     <label htmlFor="news-alert-toggle" className="text-gray-800 text-sm cursor-pointer">
-                        Sonido de alerta para noticias
+                        Reproducir sonido de alerta para noticias
                     </label>
                     <button
                         id="news-alert-toggle"
@@ -171,10 +185,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                     </button>
                 </div>
             </div>
-            <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-500 mb-2">Voz de las Noticias (ElevenLabs)</h3>
-                <VoiceSelector settings={settings} onSettingsChange={onSettingsChange} />
-            </div>
+
         </div>
 
         <div className="p-6 md:p-8 flex-shrink-0">
