@@ -124,7 +124,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
               <div className="flex items-center justify-between w-full pr-12">
                 <div>
                   <h2 className="font-brittany text-4xl text-gray-900">El Nexo Digital</h2>
-                  <p className="text-sm text-gray-600 mt-1">Una forma diferente de saber la noticia</p>
+                  <p className="text-sm text-gray-600 mt-1 font-bold">Una forma diferente de ver la noticia</p>
                 </div>
               </div>
             </>
@@ -136,6 +136,7 @@ const PopupModal: React.FC<PopupModalProps> = ({ content, onClose, audioContext,
         {/* Weather section */}
         {content.weather && (
           <div className="px-6 md:px-8 pt-4">
+             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">El clima en Juan Lacaze, Colonia, Uruguay</h4>
              <div className="bg-gray-100 rounded-lg p-3 flex items-center justify-between text-sm text-gray-700">
                <div className="flex items-center gap-2">
                  <div className="w-6 h-6 text-gray-600">

@@ -104,7 +104,7 @@ const fetchWeather = async (): Promise<WeatherInfo | null> => {
     return null;
   }
   try {
-    const prompt = "Cuál es el pronóstico del tiempo ahora mismo para Juan Lacaze, Colonia, Uruguay? Dame la temperatura actual en Celsius, una descripción muy breve (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.";
+    const prompt = "Cuál es el pronóstico del tiempo actual para la ciudad de Juan Lacaze, departamento de Colonia, Uruguay? Dame la temperatura actual en grados Celsius, una descripción muy breve del cielo (ej. 'Soleado', 'Parcialmente Nublado'), y la velocidad del viento en km/h.";
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -146,7 +146,7 @@ export default function App(): React.ReactNode {
   
   const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
   const [shownPopups, setShownPopups] = useState<string[]>([]);
-  const [playerToResume, setPlayerToResume] = useState<'main' | null>(null);
+  const [isDuckedForPopup, setIsDuckedForPopup] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
@@ -409,8 +409,7 @@ export default function App(): React.ReactNode {
     
     if (finalContent.audioUrl || finalContent.videoUrl || finalContent.type === 'news') {
       if (activePlayer) {
-        setPlayerToResume(activePlayer);
-        setActivePlayer(null);
+        setIsDuckedForPopup(true);
       }
     }
   }, [activePlayer, activePopup, settings.playNewsAlert]);
@@ -445,11 +444,8 @@ export default function App(): React.ReactNode {
   }, [isStarted, shownPopups, handleShowPopup]);
 
   const handleClosePopup = () => {
-    if (playerToResume) {
-      setActivePlayer(playerToResume);
-    }
+    setIsDuckedForPopup(false);
     setActivePopup(null);
-    setPlayerToResume(null);
   };
   
   const handleUserSaved = (user: UserInfo) => {
@@ -639,7 +635,8 @@ export default function App(): React.ReactNode {
       handleStart();
   };
 
-  const audioPlayerVolume = isMainPlayerActive && mainPlayerItem?.type === 'music' ? mainPlayerVolume : 1.0;
+  const stingerDuckedVolume = (isMainPlayerActive && mainPlayerItem?.type === 'music') ? mainPlayerVolume : 1.0;
+  const audioPlayerVolume = isDuckedForPopup ? 0.1 : stingerDuckedVolume;
 
   if (!isStarted) {
     return (
