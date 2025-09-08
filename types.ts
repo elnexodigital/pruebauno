@@ -80,6 +80,13 @@ export interface AppSettings {
   selectedVoiceId?: string;
 }
 
+export interface ApiKeys {
+  gemini: string;
+  openWeather: string;
+  elevenLabs: string;
+  openAI: string;
+}
+
 export interface ElevenLabsVoice {
   voice_id: string;
   name: string;

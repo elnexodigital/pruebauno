@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GoogleGenAI } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS, NEWS_INTRO_URL, CHARACTER_IMAGES } from './constants';
+import { API_KEYS } from './apiConfig';
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
@@ -9,119 +10,18 @@ import WelcomeForm from './components/WelcomeForm';
 import CircularPlayer from './components/CircularPlayer';
 import BackgroundImage from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
-// Fix: Imported `PopupContent` to resolve type errors.
 import { TimeOfDay, UserInfo, MediaItem, GroundingSource, NewsItem, WeatherInfo, VideoPodcast, AppSettings, PopupContent } from './types';
 import OwnerControls from './components/OwnerControls';
-import ConfigModal from './components/ConfigModal';
 import InstallPwaButton from './components/InstallPwaButton';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Fix: Switched from Vite's `import.meta.env` to Node's `process.env` as per guidelines.
-// Get API keys securely from environment variables
-const geminiApiKey = process.env.API_KEY;
-const openWeatherApiKey = process.env.OPENWEATHER_API_KEY;
-const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
-
-// Fix: Simplified AI initialization to use the environment variable directly, adhering to guidelines.
-const ai: GoogleGenAI | null = geminiApiKey
-  ? new GoogleGenAI({ apiKey: geminiApiKey })
-  : null;
-
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
 const SETTINGS_KEY = 'elNexoDigitalSettings';
-
-const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
-  if (!ai) {
-    return {
-        title: "Error de Configuración",
-        text: [{ headline: "Clave de API no encontrada", summary: "La clave de Gemini no se encontró o es incorrecta. Configúrala en las Variables de Entorno de tu servidor." }],
-        sources: [],
-    };
-  }
-
-  try {
-    const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-    const prompt = `Genera un resumen de las 4 noticias más urgentes y de última hora a nivel mundial y de Uruguay para hoy, ${today}. Asegúrate de que la información sea lo más actualizada posible. Para cada noticia, da un titular conciso y un resumen muy breve de una oración. Usa este formato estricto para cada noticia, separándolas con un doble salto de línea (no agregues texto introductorio ni conclusiones):\nTITULAR: [el titular]\nRESUMEN: [el resumen]`;
-    
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{googleSearch: {}}],
-      },
-    });
-    
-    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingSource[] || [];
-    const responseText = response.text.trim();
-    
-    if (responseText) {
-      const newsBlocks = responseText.split('\n\n');
-      const newsItems: NewsItem[] = newsBlocks.map(block => {
-        const lines = block.split('\n').filter(line => line.trim() !== '');
-        const headlineLine = lines.find(line => line.toUpperCase().startsWith('TITULAR:'));
-        const summaryLine = lines.find(line => line.toUpperCase().startsWith('RESUMEN:'));
-        
-        if (headlineLine && summaryLine) {
-          return {
-            headline: headlineLine.substring(headlineLine.indexOf(':') + 1).trim(),
-            summary: summaryLine.substring(summaryLine.indexOf(':') + 1).trim(),
-          };
-        }
-        return null;
-      }).filter((item): item is NewsItem => item !== null);
-      
-      if (newsItems.length > 0) {
-        return {
-          title: "Noticias del Día (con tecnología Gemini)",
-          text: newsItems,
-          sources: sources,
-        };
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error("Error fetching or parsing news from Gemini:", error);
-    return {
-        title: "Error de Conexión",
-        text: [{ headline: "Fallo en la comunicación", summary: "No pudimos obtener las noticias en este momento. La conexión con el nexo digital parece estar interrumpida. Por favor, inténtalo más tarde." }],
-        sources: [],
-    };
-  }
-};
-
-const fetchWeather = async (): Promise<WeatherInfo | null> => {
-  if (!openWeatherApiKey || openWeatherApiKey.includes('TU_CLAVE_AQUI')) {
-    console.warn("OpenWeather API key not found, cannot fetch weather.");
-    return null;
-  }
-  try {
-    const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Juan%20Lacaze,UY&appid=${openWeatherApiKey}&units=metric&lang=es`);
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`OpenWeather API error: ${errorData.message}`);
-    }
-    const data = await response.json();
-    
-    if (data && data.main && data.weather && data.weather[0] && data.wind) {
-        return {
-            temperature: `${Math.round(data.main.temp)}`,
-            description: data.weather[0].description,
-            windSpeed: `${Math.round(data.wind.speed * 3.6)} km/h`, // convert m/s to km/h
-        };
-    } else {
-        throw new Error("Invalid data structure from OpenWeather API");
-    }
-  } catch (error) {
-    console.error("Error fetching or parsing weather from OpenWeather:", error);
-    return null;
-  }
-};
 
 export default function App(): React.ReactNode {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isStarted, setIsStarted] = useState<boolean>(false);
-  
   const { timeOfDay, overlayClass } = useTimeOfDay();
 
   const [mainPlayerItem, setMainPlayerItem] = useState<MediaItem | null>(null);
@@ -134,7 +34,6 @@ export default function App(): React.ReactNode {
   const [activePopup, setActivePopup] = useState<PopupContent | null>(null);
   const [shownPopups, setShownPopups] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
   const [immersiveVideoPodcast, setImmersiveVideoPodcast] = useState<VideoPodcast | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
   const [settings, setSettings] = useState<AppSettings>({ playNewsAlert: true, selectedVoiceId: '' });
@@ -149,22 +48,120 @@ export default function App(): React.ReactNode {
   const masterAudioContextRef = useRef<AudioContext | null>(null);
   const masterAudioDestinationRef = useRef<AudioNode | null>(null);
   
+  const ai = useMemo(() => {
+    if (API_KEYS.gemini && !API_KEYS.gemini.includes('TU_CLAVE_AQUI')) {
+      try {
+        return new GoogleGenAI({ apiKey: API_KEYS.gemini });
+      } catch (e) {
+        console.error("Error initializing GoogleGenAI:", e);
+        return null;
+      }
+    }
+    return null;
+  }, []);
+  
+  const fetchNews = useCallback(async (): Promise<{ title: string; text: NewsItem[]; sources: GroundingSource[] } | null> => {
+    if (!ai) {
+      return {
+          title: "Error de Configuración",
+          text: [{ headline: "Clave de API no encontrada", summary: "La clave de API de Gemini no se encontró o es incorrecta. Por favor, avisa al administrador." }],
+          sources: [],
+      };
+    }
+
+    try {
+      const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+      const prompt = `Genera un resumen de las 4 noticias más urgentes y de última hora a nivel mundial y de Uruguay para hoy, ${today}. Asegúrate de que la información sea lo más actualizada posible. Para cada noticia, da un titular conciso y un resumen muy breve de una oración. Usa este formato estricto para cada noticia, separándolas con un doble salto de línea (no agregues texto introductorio ni conclusiones):\nTITULAR: [el titular]\nRESUMEN: [el resumen]`;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          tools: [{googleSearch: {}}],
+        },
+      });
+      
+      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingSource[] || [];
+      const responseText = response.text.trim();
+      
+      if (responseText) {
+        const newsBlocks = responseText.split('\n\n');
+        const newsItems: NewsItem[] = newsBlocks.map(block => {
+          const lines = block.split('\n').filter(line => line.trim() !== '');
+          const headlineLine = lines.find(line => line.toUpperCase().startsWith('TITULAR:'));
+          const summaryLine = lines.find(line => line.toUpperCase().startsWith('RESUMEN:'));
+          
+          if (headlineLine && summaryLine) {
+            return {
+              headline: headlineLine.substring(headlineLine.indexOf(':') + 1).trim(),
+              summary: summaryLine.substring(summaryLine.indexOf(':') + 1).trim(),
+            };
+          }
+          return null;
+        }).filter((item): item is NewsItem => item !== null);
+        
+        if (newsItems.length > 0) {
+          return {
+            title: "Noticias del Día (con tecnología Gemini)",
+            text: newsItems,
+            sources: sources,
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching or parsing news from Gemini:", error);
+      return {
+          title: "Error de Conexión",
+          text: [{ headline: "Fallo en la comunicación", summary: "No pudimos obtener las noticias en este momento. La conexión con el nexo digital parece estar interrumpida. Por favor, inténtalo más tarde." }],
+          sources: [],
+      };
+    }
+  }, [ai]);
+
+  const fetchWeather = useCallback(async (): Promise<WeatherInfo | null> => {
+    const openWeatherApiKey = API_KEYS.openWeather;
+    if (!openWeatherApiKey || openWeatherApiKey.includes('TU_CLAVE_AQUI')) {
+      console.warn("OpenWeather API key not found, cannot fetch weather.");
+      return null;
+    }
+    try {
+      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Juan%20Lacaze,UY&appid=${openWeatherApiKey}&units=metric&lang=es`);
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`OpenWeather API error: ${errorData.message}`);
+      }
+      const data = await response.json();
+      
+      if (data && data.main && data.weather && data.weather[0] && data.wind) {
+          return {
+              temperature: `${Math.round(data.main.temp)}`,
+              description: data.weather[0].description,
+              windSpeed: `${Math.round(data.wind.speed * 3.6)} km/h`, // convert m/s to km/h
+          };
+      } else {
+          throw new Error("Invalid data structure from OpenWeather API");
+      }
+    } catch (error) {
+      console.error("Error fetching or parsing weather from OpenWeather:", error);
+      return null;
+    }
+  }, []);
+
   const shuffleMedia = useCallback((options: { forceMusic?: boolean } = {}) => {
-    // If an immersive video is playing, don't shuffle anything new.
     if (immersiveVideoPodcast) return;
 
     const { forceMusic = false } = options;
     const now = Date.now();
     const thirtyMinutes = 30 * 60 * 1000;
 
-    // Decide what to play next. Give video podcasts a ~20% chance if not forced to music.
     const canPlayVideoPodcast = VIDEO_PODCASTS.length > 0 && !forceMusic;
     const shouldPlayVideoPodcast = canPlayVideoPodcast && Math.random() < 0.2;
 
     if (shouldPlayVideoPodcast) {
       const videoPodcast = getRandomItem(VIDEO_PODCASTS);
       setImmersiveVideoPodcast(videoPodcast);
-      setActivePlayer(null); // Stop any other audio
+      setActivePlayer(null); 
       setMainPlayerItem(null);
       return;
     }
@@ -214,7 +211,6 @@ export default function App(): React.ReactNode {
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setUserInfo(parsedUser);
-        // DO NOT set isStarted here. Wait for user interaction.
         if (parsedUser.name && parsedUser.name.trim().toLowerCase() === 'leo castrillo') {
             setIsOwner(true);
         }
@@ -224,7 +220,7 @@ export default function App(): React.ReactNode {
         setSettings(prev => ({ ...prev, ...JSON.parse(storedSettings) }));
       }
     } catch (error) {
-      console.error("Failed to parse user info or settings from localStorage", error);
+      console.error("Failed to parse data from localStorage", error);
     }
   }, []);
 
@@ -234,7 +230,6 @@ export default function App(): React.ReactNode {
     }
   }, [isStarted, mainPlayerItem, immersiveVideoPodcast, shuffleMedia]);
   
-  // Effect to handle PWA installation and updates
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(reg => {
@@ -295,8 +290,6 @@ export default function App(): React.ReactNode {
     }
   };
 
-
-  // Effect for handling audio stingers with auto-ducking
   useEffect(() => {
     let isCancelled = false;
 
@@ -322,7 +315,7 @@ export default function App(): React.ReactNode {
         return;
       }
 
-      setMainPlayerVolume(0.1); // Duck main audio
+      setMainPlayerVolume(0.1);
 
       fetch(randomStingerUrl)
         .then(response => {
@@ -341,7 +334,7 @@ export default function App(): React.ReactNode {
           source.buffer = audioBuffer;
           source.onended = () => {
             if (isCancelled) return;
-            setMainPlayerVolume(1.0); // Restore main audio volume
+            setMainPlayerVolume(1.0);
             scheduleTimeout();
           };
           
@@ -362,7 +355,7 @@ export default function App(): React.ReactNode {
         .catch(error => {
           console.error("Audio stinger playback error:", error);
           if (isCancelled) return;
-          setMainPlayerVolume(1.0); // Restore volume on error too
+          setMainPlayerVolume(1.0);
           scheduleTimeout();
         });
     };
@@ -388,7 +381,7 @@ export default function App(): React.ReactNode {
 
     let finalContent: PopupContent | null = content || null;
 
-    if (!finalContent) { // Manual trigger for news
+    if (!finalContent) {
         finalContent = {
             type: 'news', time: '',
             title: "Generando Noticias...",
@@ -407,7 +400,6 @@ export default function App(): React.ReactNode {
       }
     }
     
-    // Stop the main player instead of ducking the volume
     if (finalContent.audioUrl || finalContent.videoUrl || finalContent.type === 'news') {
       if (activePlayer) {
         setActivePlayer(null);
@@ -435,7 +427,7 @@ export default function App(): React.ReactNode {
             } : null);
         }
     }
-  }, [activePlayer, activePopup, settings.playNewsAlert]);
+  }, [activePlayer, activePopup, settings.playNewsAlert, fetchNews, fetchWeather]);
 
   useEffect(() => {
     if (!isStarted) return;
@@ -452,7 +444,7 @@ export default function App(): React.ReactNode {
       }
     };
 
-    const intervalId = setInterval(checkTime, 30000); // Check every 30 seconds
+    const intervalId = setInterval(checkTime, 30000);
 
     const now = new Date();
     const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5, 0).getTime() - now.getTime();
@@ -468,7 +460,6 @@ export default function App(): React.ReactNode {
 
   const handleClosePopup = () => {
     setActivePopup(null);
-    // Resume music with a new track after the popup closes
     shuffleMedia({ forceMusic: true });
   };
   
@@ -478,14 +469,6 @@ export default function App(): React.ReactNode {
     if (user.name && user.name.trim().toLowerCase() === 'leo castrillo') {
         setIsOwner(true);
     }
-  };
-
-  const handleSettingsChange = (newSettings: Partial<AppSettings>) => {
-    setSettings(prev => {
-      const updatedSettings = { ...prev, ...newSettings };
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(updatedSettings));
-      return updatedSettings;
-    });
   };
   
   const handleInstallApp = async () => {
@@ -516,12 +499,12 @@ export default function App(): React.ReactNode {
       masterCompressor.release.setValueAtTime(0.25, context.currentTime);
 
       const masterGain = context.createGain();
-      masterGain.gain.setValueAtTime(1.1, context.currentTime); // 10% overall boost
+      masterGain.gain.setValueAtTime(1.1, context.currentTime);
 
       masterCompressor.connect(masterGain).connect(context.destination);
 
       masterAudioContextRef.current = context;
-      masterAudioDestinationRef.current = masterCompressor; // Other nodes connect here
+      masterAudioDestinationRef.current = masterCompressor;
     } catch (e) {
       console.error("Failed to create Master AudioContext.", e);
     }
@@ -559,7 +542,7 @@ export default function App(): React.ReactNode {
                 .then(audioBuffer => {
                     const source = audioContext.createBufferSource();
                     source.buffer = audioBuffer;
-                    source.connect(destination); // Connect to master chain
+                    source.connect(destination);
                     source.start();
                 })
                 .catch(error => console.error("Greeting audio playback failed via Web Audio API:", error));
@@ -691,7 +674,7 @@ export default function App(): React.ReactNode {
                 loop={false}
                 muted={false}
                 onEnded={handleImmersiveVideoEnded}
-                onError={handleImmersiveVideoEnded} // Also exit on error
+                onError={handleImmersiveVideoEnded}
                 objectFit="contain"
               />
             </div>
@@ -807,7 +790,6 @@ export default function App(): React.ReactNode {
             {isOwner && (
                 <OwnerControls 
                     onShowPopup={() => handleShowPopup()} 
-                    onShowConfig={() => setShowConfigModal(true)}
                     onTestVideoPodcast={handleTestVideoPodcast}
                 />
             )}
@@ -819,20 +801,9 @@ export default function App(): React.ReactNode {
             audioContext={masterAudioContextRef.current}
             audioDestination={masterAudioDestinationRef.current}
             selectedVoiceId={settings.selectedVoiceId}
-            elevenLabsApiKey={elevenLabsApiKey}
+            elevenLabsApiKey={API_KEYS.elevenLabs}
           />
-          
-          {showConfigModal && (
-              <ConfigModal 
-                onClose={() => setShowConfigModal(false)}
-                userInfo={userInfo}
-                timeGreeting={timeGreeting}
-                ai={ai}
-                settings={settings}
-                onSettingsChange={handleSettingsChange}
-                elevenLabsApiKey={elevenLabsApiKey}
-              />
-          )}
+
         </main>
       )}
     </>
