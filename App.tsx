@@ -1,5 +1,16 @@
-// FIX: Removed unresolved Vite client types reference to fix "Cannot find type" error.
-// The code now safely accesses `import.meta.env` via a type cast.
+
+// FIX: Manually define the ImportMeta interface to provide types for 
+// import.meta.env and resolve "'vite/client' not found" errors.
+interface ImportMetaEnv {
+  readonly VITE_GEMINI_API_KEY: string;
+  readonly VITE_OPENWEATHER_API_KEY: string;
+  readonly VITE_ELEVENLABS_API_KEY: string;
+  readonly VITE_OPENAI_API_KEY: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
 
 // FIX: Corrected the invalid React import and added missing hook imports (useState, useEffect, etc.) to resolve 'Cannot find name' errors.
 // FIX: Corrected the React import to include missing hooks (useState, useEffect, useRef, useCallback, useMemo).
@@ -7,7 +18,6 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GoogleGenAI, Type } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS, NEWS_INTRO_URL, CHARACTER_IMAGES } from './constants';
-import { OPENWEATHER_API_KEY, ELEVENLABS_API_KEY } from './apiKeys';
 import AudioPlayer from './components/AudioPlayer';
 import VideoPlayer from './components/VideoPlayer';
 import PopupModal from './components/PopupModal';
@@ -22,10 +32,12 @@ import InstallPwaButton from './components/InstallPwaButton';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-const geminiApiKey = process.env.API_KEY;
-const openWeatherApiKey = OPENWEATHER_API_KEY;
+// Securely get API keys from environment variables
+const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const openWeatherApiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
+const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
 
-const ai: GoogleGenAI | null = (geminiApiKey) 
+const ai: GoogleGenAI | null = (geminiApiKey && !geminiApiKey.startsWith('PEGA_AQUÍ')) 
   ? new GoogleGenAI({ apiKey: geminiApiKey }) 
   : null;
 
@@ -36,7 +48,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
   if (!ai) {
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Clave de API no encontrada", summary: "La clave de Gemini no se encontró o es incorrecta. Las funciones de IA están deshabilitadas." }],
+        text: [{ headline: "Clave de API no encontrada", summary: "La clave de Gemini no se encontró o es incorrecta. Configúrala en las Variables de Entorno de tu hosting (ej. Vercel)." }],
         sources: [],
     };
   }
@@ -93,7 +105,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 
 const fetchWeather = async (): Promise<WeatherInfo | null> => {
   if (!openWeatherApiKey || openWeatherApiKey.startsWith('PEGA_AQUÍ')) {
-    console.warn("OpenWeather API key not found in apiKeys.ts, cannot fetch weather.");
+    console.warn("OpenWeather API key not found, cannot fetch weather.");
     return null;
   }
   try {
@@ -820,7 +832,7 @@ export default function App(): React.ReactNode {
             audioContext={masterAudioContextRef.current}
             audioDestination={masterAudioDestinationRef.current}
             selectedVoiceId={settings.selectedVoiceId}
-            elevenLabsApiKey={ELEVENLABS_API_KEY}
+            elevenLabsApiKey={elevenLabsApiKey}
           />
           
           {showConfigModal && (
@@ -831,7 +843,7 @@ export default function App(): React.ReactNode {
                 ai={ai}
                 settings={settings}
                 onSettingsChange={handleSettingsChange}
-                elevenLabsApiKey={ELEVENLABS_API_KEY}
+                elevenLabsApiKey={elevenLabsApiKey}
               />
           )}
         </main>

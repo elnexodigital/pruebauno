@@ -1,3 +1,17 @@
+
+// FIX: Manually define the ImportMeta interface to provide types for 
+// import.meta.env and resolve "'vite/client' not found" errors.
+interface ImportMetaEnv {
+  readonly VITE_GEMINI_API_KEY: string;
+  readonly VITE_OPENWEATHER_API_KEY: string;
+  readonly VITE_ELEVENLABS_API_KEY: string;
+  readonly VITE_OPENAI_API_KEY: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { UserInfo, AppSettings } from '../types';
@@ -16,7 +30,7 @@ interface ConfigModalProps {
 
 type ApiStatus = 'idle' | 'checking' | 'success' | 'error';
 
-const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string }> = ({ status, serviceName }) => {
+const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string, isEnvVar: boolean }> = ({ status, serviceName, isEnvVar }) => {
   if (status === 'checking') {
     return (
       <div className="flex items-center space-x-2 text-sm text-gray-500">
@@ -38,12 +52,16 @@ const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string }> =
   }
     
   if (status === 'error') {
+     const helpText = isEnvVar 
+        ? "Revisa las Variables de Entorno en tu hosting (ej. Vercel)."
+        : "Revisa la clave en tu archivo local apiKeys.ts.";
+
      return (
         <div className="flex items-center space-x-2 text-sm text-red-600">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
-          <span>Conexión con {serviceName}: Fallida. Revisa la clave en <b>apiKeys.ts</b>.</span>
+          <span>Conexión con {serviceName}: Fallida. {helpText}</span>
         </div>
      );
   }
@@ -93,6 +111,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
     verifyElevenLabsKey(elevenLabsApiKey);
   }, [ai, elevenLabsApiKey]);
 
+  const isProduction = !!import.meta.env.VITE_GEMINI_API_KEY;
+
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-fade-in"
@@ -118,11 +138,12 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-700">Conexiones de API</h3>
                 <div className="space-y-2">
-                    <ApiStatusIndicator status={geminiApiStatus} serviceName="Gemini" />
-                    <ApiStatusIndicator status={elevenLabsApiStatus} serviceName="ElevenLabs" />
+                    <ApiStatusIndicator status={geminiApiStatus} serviceName="Gemini" isEnvVar={isProduction} />
+                    <ApiStatusIndicator status={elevenLabsApiStatus} serviceName="ElevenLabs" isEnvVar={isProduction} />
                 </div>
                  <p className="text-xs text-gray-500">
-                    Las claves de API para OpenWeather y ElevenLabs se configuran en el archivo <code>apiKeys.ts</code>. La clave de Gemini se gestiona automáticamente.
+                    <b>Para desarrollo local:</b> las claves se configuran en el archivo <code>apiKeys.ts</code> (ignorado por Git).<br/>
+                    <b>Para producción (Vercel):</b> las claves DEBEN configurarse como <b>Variables de Entorno</b> en el panel de tu proyecto.
                 </p>
             </div>
 
@@ -137,7 +158,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                         />
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500">Configura una clave de ElevenLabs válida en <code>apiKeys.ts</code> para seleccionar una voz.</p>
+                    <p className="text-sm text-gray-500">Configura una clave de ElevenLabs válida para seleccionar una voz.</p>
                 )}
             </div>
 
