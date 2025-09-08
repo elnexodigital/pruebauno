@@ -1,21 +1,5 @@
-
-// FIX: Manually define the ImportMeta interface to provide types for 
-// import.meta.env and resolve "'vite/client' not found" errors.
-interface ImportMetaEnv {
-  readonly VITE_GEMINI_API_KEY: string;
-  readonly VITE_OPENWEATHER_API_KEY: string;
-  readonly VITE_ELEVENLABS_API_KEY: string;
-  readonly VITE_OPENAI_API_KEY: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
-// FIX: Corrected the invalid React import and added missing hook imports (useState, useEffect, etc.) to resolve 'Cannot find name' errors.
-// FIX: Corrected the React import to include missing hooks (useState, useEffect, useRef, useCallback, useMemo).
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { useTimeOfDay } from './hooks/useTimeOfDay';
 import { PODCASTS, MUSIC_TRACKS, VIDEO_URLS, GREETING_AUDIOS, AUDIO_STINGERS, POPUP_SCHEDULE, STATIC_BACKGROUND_URL, VIDEO_PODCASTS, NEWS_INTRO_URL, CHARACTER_IMAGES } from './constants';
 import AudioPlayer from './components/AudioPlayer';
@@ -25,20 +9,23 @@ import WelcomeForm from './components/WelcomeForm';
 import CircularPlayer from './components/CircularPlayer';
 import BackgroundImage from './components/BackgroundVideo';
 import TypewriterText from './components/TypewriterText';
-import { TimeOfDay, UserInfo, MediaItem, Podcast, PopupContent, GroundingSource, NewsItem, WeatherInfo, VideoPodcast, AppSettings } from './types';
+// Fix: Imported `PopupContent` to resolve type errors.
+import { TimeOfDay, UserInfo, MediaItem, GroundingSource, NewsItem, WeatherInfo, VideoPodcast, AppSettings, PopupContent } from './types';
 import OwnerControls from './components/OwnerControls';
 import ConfigModal from './components/ConfigModal';
 import InstallPwaButton from './components/InstallPwaButton';
 
 const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-// Securely get API keys from environment variables
-const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-const openWeatherApiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
-const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+// Fix: Switched from Vite's `import.meta.env` to Node's `process.env` as per guidelines.
+// Get API keys securely from environment variables
+const geminiApiKey = process.env.API_KEY;
+const openWeatherApiKey = process.env.OPENWEATHER_API_KEY;
+const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
 
-const ai: GoogleGenAI | null = (geminiApiKey && !geminiApiKey.startsWith('PEGA_AQUÍ')) 
-  ? new GoogleGenAI({ apiKey: geminiApiKey }) 
+// Fix: Simplified AI initialization to use the environment variable directly, adhering to guidelines.
+const ai: GoogleGenAI | null = geminiApiKey
+  ? new GoogleGenAI({ apiKey: geminiApiKey })
   : null;
 
 const LOCAL_STORAGE_KEY = 'elNexoDigitalUserInfo';
@@ -48,7 +35,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
   if (!ai) {
     return {
         title: "Error de Configuración",
-        text: [{ headline: "Clave de API no encontrada", summary: "La clave de Gemini no se encontró o es incorrecta. Configúrala en las Variables de Entorno de tu hosting (ej. Vercel)." }],
+        text: [{ headline: "Clave de API no encontrada", summary: "La clave de Gemini no se encontró o es incorrecta. Configúrala en las Variables de Entorno de tu servidor." }],
         sources: [],
     };
   }
@@ -104,7 +91,7 @@ const fetchNews = async (): Promise<{ title: string; text: NewsItem[]; sources: 
 };
 
 const fetchWeather = async (): Promise<WeatherInfo | null> => {
-  if (!openWeatherApiKey || openWeatherApiKey.startsWith('PEGA_AQUÍ')) {
+  if (!openWeatherApiKey || openWeatherApiKey.includes('TU_CLAVE_AQUI')) {
     console.warn("OpenWeather API key not found, cannot fetch weather.");
     return null;
   }

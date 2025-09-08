@@ -1,17 +1,3 @@
-
-// FIX: Manually define the ImportMeta interface to provide types for 
-// import.meta.env and resolve "'vite/client' not found" errors.
-interface ImportMetaEnv {
-  readonly VITE_GEMINI_API_KEY: string;
-  readonly VITE_OPENWEATHER_API_KEY: string;
-  readonly VITE_ELEVENLABS_API_KEY: string;
-  readonly VITE_OPENAI_API_KEY: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { UserInfo, AppSettings } from '../types';
@@ -30,7 +16,7 @@ interface ConfigModalProps {
 
 type ApiStatus = 'idle' | 'checking' | 'success' | 'error';
 
-const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string, isEnvVar: boolean }> = ({ status, serviceName, isEnvVar }) => {
+const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string }> = ({ status, serviceName }) => {
   if (status === 'checking') {
     return (
       <div className="flex items-center space-x-2 text-sm text-gray-500">
@@ -52,9 +38,7 @@ const ApiStatusIndicator: React.FC<{ status: ApiStatus, serviceName: string, isE
   }
     
   if (status === 'error') {
-     const helpText = isEnvVar 
-        ? "Revisa las Variables de Entorno en tu hosting (ej. Vercel)."
-        : "Revisa la clave en tu archivo local apiKeys.ts.";
+     const helpText = "Revisa la clave en las Variables de Entorno de tu servidor (Vercel).";
 
      return (
         <div className="flex items-center space-x-2 text-sm text-red-600">
@@ -75,7 +59,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
   const [elevenLabsApiStatus, setElevenLabsApiStatus] = useState<ApiStatus>('idle');
   
   const verifyElevenLabsKey = async (key?: string) => {
-    if (!key || key.startsWith('PEGA_AQUÍ')) {
+    if (!key || key.includes('TU_CLAVE_AQUI')) {
       setElevenLabsApiStatus('error');
       return;
     }
@@ -111,8 +95,6 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
     verifyElevenLabsKey(elevenLabsApiKey);
   }, [ai, elevenLabsApiKey]);
 
-  const isProduction = !!import.meta.env.VITE_GEMINI_API_KEY;
-
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-fade-in"
@@ -138,12 +120,11 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-700">Conexiones de API</h3>
                 <div className="space-y-2">
-                    <ApiStatusIndicator status={geminiApiStatus} serviceName="Gemini" isEnvVar={isProduction} />
-                    <ApiStatusIndicator status={elevenLabsApiStatus} serviceName="ElevenLabs" isEnvVar={isProduction} />
+                    <ApiStatusIndicator status={geminiApiStatus} serviceName="Gemini" />
+                    <ApiStatusIndicator status={elevenLabsApiStatus} serviceName="ElevenLabs" />
                 </div>
                  <p className="text-xs text-gray-500">
-                    <b>Para desarrollo local:</b> las claves se configuran en el archivo <code>apiKeys.ts</code> (ignorado por Git).<br/>
-                    <b>Para producción (Vercel):</b> las claves DEBEN configurarse como <b>Variables de Entorno</b> en el panel de tu proyecto.
+                    Las claves de API se gestionan de forma segura a través de <b>Variables de Entorno</b> en tu servidor (ej. Vercel).
                 </p>
             </div>
 
@@ -158,7 +139,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose, userInfo, timeGreeti
                         />
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500">Configura una clave de ElevenLabs válida para seleccionar una voz.</p>
+                    <p className="text-sm text-gray-500">Configura una clave de ElevenLabs válida en tus variables de entorno para poder seleccionar una voz.</p>
                 )}
             </div>
 
